@@ -49,7 +49,7 @@ function App() {
           config: { paperWidthInMillimeters: 50, paperHeightInMillimeters: 70, format: 'svg' }
         };
 
-        const response = await fetch('https://7760-2003-c5-9f21-e228-18b2-d2e0-f7b-fda0.ngrok-free.app/preview', {
+        const response = await fetch('http://wunderpen-inkloom-test.server.bett-ingenieure.de/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=' },
           body: JSON.stringify(bodyData)
