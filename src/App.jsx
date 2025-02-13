@@ -49,7 +49,7 @@ function App() {
           config: { paperWidthInMillimeters: 50, paperHeightInMillimeters: 70, format: 'svg' }
         };
 
-        const response = await fetch('http://wunderpen-inkloom-test.server.bett-ingenieure.de/preview', {
+        const response = await fetch('https://inkloom-test.bi-dev2.de/api/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=' },
           body: JSON.stringify(bodyData)
