@@ -181,7 +181,7 @@ function App() {
       };
 
       const url = `${parametersUrl}`;
-      const response = await fetch(url, {
+      const response = await fetch(url.replace("http","https"), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
