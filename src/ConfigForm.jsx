@@ -44,7 +44,7 @@ function ConfigForm({
         });
         const data = await response.json();
         setConfig(data);
-        generatePreview(); // Trigger preview after fetching
+        //generatePreview(); // Trigger preview after fetching
       } catch (error) {
         console.error('Error fetching selected config:', error);
       }
@@ -149,7 +149,7 @@ function ConfigForm({
           style={{ padding: '6px', fontSize: '13px', minWidth: '140px' }}
         >
           {blocks.map((block, idx) => (
-            <option key={idx} value={idx}>
+            <option key={idx} value={block.id}>
               {block.name}
             </option>
           ))}
@@ -174,7 +174,7 @@ function ConfigForm({
               {item.key === 'alignment' ? (
                 <select
                   name={item.key}
-                  value={blocks[selectedBlockIndex]?.config[item.key] || 'left'}
+                  value={blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] || 'left'}
                   onChange={handleBlockChange}
                   style={{ width: '70px', padding: '3px', fontSize: '12px' }}
                 >
@@ -184,7 +184,7 @@ function ConfigForm({
                 </select>
               ) : item.key === 'fontName'?  <select
               name={item.key}
-              value={blocks[selectedBlockIndex]?.config[item.key] || 'jessy'}
+              value={blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] || 'jessy'}
               onChange={handleBlockChange}
               style={{ width: '70px', padding: '3px', fontSize: '12px' }}
             >
@@ -199,7 +199,7 @@ function ConfigForm({
             </select>: 
             item.key === 'multiline'?  <select
               name={item.key}
-              value={blocks[selectedBlockIndex]?.config[item.key] }
+              value={blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] }
               onChange={handleBlockChange}
               style={{ width: '70px', padding: '3px', fontSize: '12px' }}
             >
@@ -210,21 +210,21 @@ function ConfigForm({
               (
                 <input
                   type={
-                    typeof blocks[selectedBlockIndex]?.config[item.key] === 'boolean'
+                    typeof blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] === 'boolean'
                       ? 'checkbox'
-                      : typeof blocks[selectedBlockIndex]?.config[item.key] === 'number'
+                      : typeof blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] === 'number'
                         ? 'number'
                         : 'text'
                   }
                   name={item.key}
                   value={
-                    typeof blocks[selectedBlockIndex]?.config[item.key] === 'boolean'
+                    typeof blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] === 'boolean'
                       ? undefined
-                      : blocks[selectedBlockIndex]?.config[item.key]
+                      : blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key]
                   }
                   checked={
-                    typeof blocks[selectedBlockIndex]?.config[item.key] === 'boolean'
-                      ? blocks[selectedBlockIndex].config[item.key]
+                    typeof blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] === 'boolean'
+                      ? blocks.find(b=>b.id == selectedBlockIndex).config[item.key]
                       : undefined
                   }
                   onChange={handleBlockChange}

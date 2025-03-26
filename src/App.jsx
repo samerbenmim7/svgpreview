@@ -4,6 +4,8 @@ import ConfigForm from './ConfigForm';
 function App() {
   //const [textValue, setTextValue] = useState('Write To Excite !');
   const [svgData, setSvgData] = useState('');
+  const [firstfetch, setFirstfetch] = useState(true);
+
   const [font, setFont] = useState('jessy');
   const [updateMode, setUpdateMode] = useState('onChange');
   const [debounceInterval, setDebounceInterval] = useState(100);
@@ -27,7 +29,7 @@ function App() {
   // const [gColor, setGColor] = useState(0);
   // const [bColor, setBColor] = useState(200);
   const containerRef = useRef(null);
-  const [selectedBlockIndex, setSelectedBlockIndex] = useState(0);
+  const [selectedBlockIndex, setSelectedBlockIndex] = useState("1");
 
   // Paper Config
   const [paperWidth, setPaperWidth] = useState(210);
@@ -38,7 +40,9 @@ function App() {
   const [zoom, setZoom] = useState(35);
   const [blocks, setBlocks] = useState([
     {
+      id:"1",
       name: "title",
+      changed:true, 
       config: {
         text: "A Warm Thank You to WunderPen !",
         widthInMillimeters: 210,
@@ -56,6 +60,9 @@ function App() {
       }
     },
     {
+      id:"2",
+      changed:true,
+
       name: "sender",
       config: {
         text: "Rue Wafa Enfidha, 4030 Sousse, Tunisia",
@@ -74,6 +81,9 @@ function App() {
       }
     },
     {
+      id:"3",
+      changed:true,
+
       name: "sender2",
       config: {
         text: "Samer Ben Mim,",
@@ -93,6 +103,9 @@ function App() {
     },
 
     {
+      id:"4",
+      changed:true,
+
       name: "date",
       config: {
         text: "2025-03-18",
@@ -111,9 +124,12 @@ function App() {
       }
     },
     {
+      id:"5",
+      changed:true,
+
       name: "header",
       config: {
-        text: "Dear WunderPen team ♥,",
+        text: "Dear WunderPen team :) ♥,",
         widthInMillimeters: 180,
         fontSize: 4,
         fontName: "jessy",
@@ -130,6 +146,9 @@ function App() {
     },
  
     {
+      id:"6",
+      changed:true,
+
       name: "content",
       config: {
         text: "Thank you so much for your warm welcome, comfortable accommodations, and exceptional hospitality. Your support made my integration smooth and enjoyable. My deepest gratitude to Ahmad, Siva, An-Guo, Steffi, Momo & Coco, and the entire team for your exceptional efforts in making me feel at home.",
@@ -148,6 +167,9 @@ function App() {
       }
     },
     {
+      id:"7",
+      changed:true,
+
       name: "content",
       config: {
         text: "Wishing you all continued success and prosperity!",
@@ -162,6 +184,7 @@ function App() {
         r: 0,
         g: 0,
         b: 0,
+
         alignment: "left"
       }
     },
@@ -172,20 +195,23 @@ function App() {
   ]);
 
 
-  console.log(blocks)
   // Handler to update block config values
   const handleBlockChange = (e) => {
     const { name, value, type, checked } = e.target;
-    console.log(e.target.value)
-
     setBlocks((prevBlocks) =>
       prevBlocks.map((block, idx) => {
-        console.log(idx)
-        if (idx !== selectedBlockIndex) return block;
+        console.log(block.id != selectedBlockIndex)
+
+        if (block.id != selectedBlockIndex) return {
+          ...block, changed: false
+        };
+
         if (name === 'name') {
           
-          return { ...block, name: value };
+          return { ...block, name: value, changed:true };
         } else {
+          console.log("selectedBlockIndex",selectedBlockIndex,block.id)
+
           // For the alignment field, simply use the value (no parseFloat needed)
           const newVal =
             name === 'alignment'
@@ -199,6 +225,7 @@ function App() {
               : value;
           return {
             ...block,
+            changed:true,
             config: {
               ...block.config,
               [name]: newVal,
@@ -393,8 +420,72 @@ useEffect(() => {
   };
 
   // Helper: ensure white background in SVG
+  function extractBeforeAfter(str, id) {
+    // Create the start tag based on the provided id
+    const startTag = `<g id='${id}'`;
+    
+    // Find the index of the start tag in the string
+    const startIndex = str.indexOf(startTag);
+    if (startIndex === -1) {
+      // If not found, return empty strings or handle as needed
+      return { before: "", after: "" };
+    }
+    
+    // Everything before the start tag
+    const before = str.substring(0, startIndex);
+    
+    // Find the index of the first occurrence of '</g>' after the start tag
+    const endIndex = str.indexOf("</g>", startIndex);
+    if (endIndex === -1) {
+      // If the closing tag isn't found, you may decide how to handle this case
+      return { before, after: "" };
+    }
+    
+    // Everything after the closing tag; adding the length of '</g>' to get the substring after it
+    const after = str.substring(endIndex + 4);
+    
+    return { before, after };
+  }
+  function extractGId(str) {
+    // Find the starting index of the <g element.
+    const gIndex = str.indexOf("<g");
+    if (gIndex === -1) return null; // If not found, return null
+  
+    // Look for "id=" starting from the <g element
+    const idIndex = str.indexOf("id=", gIndex);
+    if (idIndex === -1) return null; // id attribute not found
+  
+    // The character immediately after "id=" should be a quote (either ' or ")
+    const quoteChar = str.charAt(idIndex + 3);
+    if (quoteChar !== '"' && quoteChar !== "'") return null; // Not a valid id attribute format
+  
+    // The actual id value starts after the quote
+    const startOfId = idIndex + 4;
+    // Find the closing quote for the id value
+    const endOfId = str.indexOf(quoteChar, startOfId);
+    if (endOfId === -1) return null; // Closing quote not found
+  
+    // Return the id substring between the quotes
+    return str.substring(startOfId, endOfId);
+  }
+  
+  // Example usage:
+
   const addWhiteBackgroundAndBordersToSVG = (svgContent, paperWidth, paperHeight) => {
+    
+
     if (!svgContent) return '';
+
+    if(!firstfetch){
+      console.log("!firstfetch")
+      const id = extractGId(svgContent);
+      const {before, after} = extractBeforeAfter(svgData,id)
+
+      svgContent = before + svgContent+ after;
+      console.log(after)
+
+    }
+
   
     // Convert 10mm margin to pixels
     const conversionFactor = 300; // px per inch
@@ -425,7 +516,7 @@ useEffect(() => {
     try {
       const bodyData = {
         fields: [
-          ...blocks.map(b=>(
+          ...blocks.map((b,index)=>(
             {
               text: b.config.text,
               widthInMillimeters: b.config.widthInMillimeters,
@@ -437,8 +528,8 @@ useEffect(() => {
               multiline: b.config.multiline,
               lineHeight: b.config.lineHeight,
               rotate:b.config.rotation,
-              rgbColor:b.config.r + ","+b.config.g + "," + b.config.b
-
+              rgbColor:b.config.r + ","+b.config.g + "," + b.config.b,
+              id:b.id+""
             }
           )
         )
@@ -475,11 +566,12 @@ useEffect(() => {
   // Fetches the SVG data (POST request) and updates X-Parameters-Url
   const fetchSVG = useCallback(
     async (inputText, selectedFont) => {
+      console.log('ici fetch')
       if (!inputText) return;
       try {
         const bodyData = {
           fields: [
-            ...blocks.map(b=>(
+            ...blocks.filter(b=>b.changed).map((b,index)=>(
               {
                 text: b.config.text,
                 widthInMillimeters: b.config.widthInMillimeters,
@@ -491,9 +583,8 @@ useEffect(() => {
                 multiline: b.config.multiline,
                 lineHeight: b.config.lineHeight,
                 rotate:b.config.rotation,
-                rgbColor:b.config.r + ","+b.config.g + "," + b.config.b
-  
-
+                rgbColor:b.config.r + ","+b.config.g + "," + b.config.b,
+                id:b.id+""
               }
             )
           )
@@ -503,8 +594,8 @@ useEffect(() => {
             paperWidthInMillimeters: paperWidth,
             paperHeightInMillimeters: paperHeight,
             format: format,
-          //  rgbColor: `${rColor},${gColor},${bColor}`,
-
+            //rgbColor: `${rColor},${gColor},${bColor}`,
+  
           },
           configId: selectedConfigId,
         };
@@ -568,7 +659,7 @@ useEffect(() => {
     try {
       const bodyData = {
         fields: [
-          ...blocks.map(b=>(
+          ...blocks.filter(b=>b.changed).map((b,index)=>(
             {
               text: b.config.text,
               widthInMillimeters: b.config.widthInMillimeters,
@@ -580,9 +671,8 @@ useEffect(() => {
               multiline: b.config.multiline,
               lineHeight: b.config.lineHeight,
               rotate:b.config.rotation,
-              rgbColor:b.config.r + ","+b.config.g + "," + b.config.b
-
-
+              rgbColor:b.config.r + ","+b.config.g + "," + b.config.b,
+              id:b.id+""
             }
           )
         )
@@ -592,12 +682,11 @@ useEffect(() => {
           paperWidthInMillimeters: paperWidth,
           paperHeightInMillimeters: paperHeight,
           format: format,
-         // rgbColor: `${rColor},${gColor},${bColor}`,
+          //rgbColor: `${rColor},${gColor},${bColor}`,
 
         },
         configId: selectedConfigId,
       };
-
       const url = parametersUrl
         .replace('http', 'https')
         .replace('wunderpen-inkloom-test.server.bett-ingenieure.de', 'inkloom-test.bi-dev2.de/api');
@@ -667,18 +756,17 @@ useEffect(() => {
 
   // Manual "Generate" button
   const handleGenerate = () => {
-    fetchSVG(blocks[selectedBlockIndex]?.config["text"], font);
+    setFirstfetch(false)
+    fetchSVG(blocks.find(b=>b.id == selectedBlockIndex)?.config["text"], font);
   };
   useEffect(() => {
     handleGenerate()
-  }, [paperWidth,paperHeight,   
-    // rColor,
-    // gColor,
-    // bColor,
-    config.heightLeftStripe,
-    config.heightBottomStripe,
-    config.heightTopStripe,
-    config.heightRightStripe,
+  }, [
+    // paperWidth,paperHeight,   
+    // config.heightLeftStripe,
+    // config.heightBottomStripe,
+    // config.heightTopStripe,
+    // config.heightRightStripe,
     blocks
   ]);
 
@@ -713,7 +801,7 @@ useEffect(() => {
           //textValue={textValue}
           selectedConfigId={selectedConfigId}
           setSelectedConfigId={setSelectedConfigId}
-          generatePreview={() => fetchSVG(blocks[selectedBlockIndex]?.config["text"], font)}
+          generatePreview={() => fetchSVG(blocks.find(b=>b.id == selectedBlockIndex)?.config["text"], font)}
           configs={configs}
           config={config}
           setConfigs={setConfigs}
@@ -757,7 +845,7 @@ useEffect(() => {
         <input
           type="text"
           style={styles.input}
-          value={blocks[selectedBlockIndex]?.config["text"] }
+          value={blocks.find(b=>b.id == selectedBlockIndex)?.config["text"] }
           onChange={handleBlockChange}
           name='text'
           placeholder="Type your text here..."
