@@ -39,6 +39,7 @@ function App() {
   // Zoom state: in percentages (100 = 100%, 150 = 150%, etc.)
   const [zoom, setZoom] = useState(35);
   const [blocks, setBlocks] = useState([
+   
     {
       id:"1",
       name: "title",
@@ -69,8 +70,8 @@ function App() {
         widthInMillimeters: 33,
         fontSize: 3,
         fontName: "conrad",
-        leftOffsetInMillimeters: 155,
-        topOffsetInMillimeters: 109,
+        leftOffsetInMillimeters: 157,
+        topOffsetInMillimeters: 84,
         multiline: true,
         lineHeight: 4,
         rotation: -20,
@@ -91,7 +92,7 @@ function App() {
         fontSize: 4,
         fontName: "conrad",
         leftOffsetInMillimeters: 155,
-        topOffsetInMillimeters: 104,
+        topOffsetInMillimeters: 79,
         multiline: true,
         lineHeight: 4,
         rotation: -20,
@@ -112,8 +113,8 @@ function App() {
         widthInMillimeters: 50,
         fontSize: 3,
         fontName: "conrad",
-        leftOffsetInMillimeters: 27,
-        topOffsetInMillimeters: -49,
+        leftOffsetInMillimeters: 160,
+        topOffsetInMillimeters: 8,
         multiline: true,
         lineHeight: 10,
         rotation: 90,
@@ -472,9 +473,34 @@ useEffect(() => {
   // Example usage:
 
   const addWhiteBackgroundAndBordersToSVG = (svgContent, paperWidth, paperHeight) => {
+    let index = 0;
+    let count = 0;
+        // Convert 10mm margin to pixels
+        const conversionFactor = 300; // px per inch
+      const dpi = 300;
+        const mmToInch = 25.4;
+        const marginLeft = config.heightLeftStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
+        const marginRight = config.heightRightStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
+        const marginTop = config.heightTopStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
+        const marginBottom = config.heightBottomStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
     
+    
+    // Borders as SVG <rect> elements
+    const borders = `
+      <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+      <rect x="${marginLeft}" y="0" width="1" height="200%" fill="red"/> <!-- Left Border -->
+      <rect x="${paperWidth/mmToInch *dpi -marginRight}" y="0" width="1" height="100%" fill="red"/> <!-- Right Border -->
+      <rect x="0" y="${marginTop}" width="100%" height="1" fill="red"/> <!-- Top Border -->
+      <rect x="0" y="${paperHeight/mmToInch *dpi -marginBottom}" width="100%" height="1" fill="red"/> <!-- Bottom Border -->
+    `;
 
-    if (!svgContent) return '';
+    while ((index = svgContent.indexOf("id='", index)) !== -1) {
+      index ++
+        count++;
+        console.log(count+ " count")
+        if (count > 1) return svgContent.replace(/<svg([^>]+)>/, `<svg$1>${borders}`);
+    }
+      
 
     if(!firstfetch){
       console.log("!firstfetch")
@@ -487,26 +513,10 @@ useEffect(() => {
     }
 
   
-    // Convert 10mm margin to pixels
-    const conversionFactor = 300; // px per inch
-  
-    const mmToInch = 25.4;
-    const marginLeft = config.heightLeftStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
-    const marginRight = config.heightRightStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
-    const marginTop = config.heightTopStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
-    const marginBottom = config.heightBottomStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
 
 
-    const dpi = 300;
     
-    // Borders as SVG <rect> elements
-    const borders = `
-      <rect x="0" y="0" width="100%" height="100%" fill="white"/>
-      <rect x="${marginLeft}" y="0" width="1" height="200%" fill="red"/> <!-- Left Border -->
-      <rect x="${paperWidth/mmToInch *dpi -marginRight}" y="0" width="1" height="100%" fill="red"/> <!-- Right Border -->
-      <rect x="0" y="${marginTop}" width="100%" height="1" fill="red"/> <!-- Top Border -->
-      <rect x="0" y="${paperHeight/mmToInch *dpi -marginBottom}" width="100%" height="1" fill="red"/> <!-- Bottom Border -->
-    `;
+
   
     // Insert the white background and borders after the opening <svg> tag
     return svgContent.replace(/<svg([^>]+)>/, `<svg$1>${borders}`);
@@ -659,7 +669,7 @@ useEffect(() => {
     try {
       const bodyData = {
         fields: [
-          ...blocks.filter(b=>b.changed).map((b,index)=>(
+          ...blocks.map((b,index)=>(
             {
               text: b.config.text,
               widthInMillimeters: b.config.widthInMillimeters,
