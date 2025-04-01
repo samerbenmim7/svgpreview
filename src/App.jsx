@@ -1,706 +1,141 @@
-import React, { useRef,useState, useEffect, useCallback } from 'react';
-import ConfigForm from './ConfigForm';
+import React, { useRef, useState, useEffect, useCallback } from 'react'
+import ConfigForm from './ConfigForm'
+import { styles } from './styles'
+import {
+  addWhiteBackgroundAndBordersToSVG,
+  downloadFile,
+} from './utils'
+import { defaultConfig, defaultBlocks } from './defaults'
 
-function App() {
-  //const [textValue, setTextValue] = useState('Write To Excite !');
-  const [svgData, setSvgData] = useState('');
-  const [firstfetch, setFirstfetch] = useState(true);
+export default function App() {
+  const [svgData, setSvgData] = useState('')
+  const [firstfetch, setFirstfetch] = useState(true)
+  const [requestTimestamps, setRequestTimestamps] = useState([])
+  const [totalRequests, setTotalRequests] = useState(0)
+  const [averageRequests, setAverageRequests] = useState(0)
+  const [parametersUrl, setParametersUrl] = useState('')
+  const [selectedConfigId, setSelectedConfigId] = useState(25)
+  const [gCodeData, setGCodeData] = useState('')
+  const containerRef = useRef(null)
+  const [selectedBlockIndex, setSelectedBlockIndex] = useState('1')
+  const [paperWidth, setPaperWidth] = useState(210)
+  const [paperHeight, setPaperHeight] = useState(105)
+  const [format, setFormat] = useState('svg')
+  const [zoom, setZoom] = useState(35)
+  const [config, setConfig] = useState(defaultConfig)
+  const [configs, setConfigs] = useState([])
+  const [blocks, setBlocks] = useState(defaultBlocks)
+  const [debounceTimer, setDebounceTimer] = useState(null)
+  const [myMap, setMyMap] = useState(new Map());
 
-  const [font, setFont] = useState('jessy');
-  const [updateMode, setUpdateMode] = useState('onChange');
-  const [debounceInterval, setDebounceInterval] = useState(100);
-  const [lastSentText, setLastSentText] = useState("");
-  const [requestTimestamps, setRequestTimestamps] = useState([]);
-  const [totalRequests, setTotalRequests] = useState(0);
-  const [averageRequests, setAverageRequests] = useState(0);
-  const [parametersUrl, setParametersUrl] = useState('');
-  const [selectedConfigId, setSelectedConfigId] = useState(null);
-  const [gCodeData, setGCodeData] = useState(''); // Stores the generated G-code
- // Color::FromArgb(200, 0, 0, 200)
-  // Fields Config fieldWidth,fieldFontSize,leftOffset,topOffset,alignment,lineHeight,multiline,paperWidth,paperHeight
-  // const [fieldWidth, setFieldWidth] = useState(70);
-  // const [fieldFontSize, setFieldFontSize] = useState(4);
-  // const [leftOffset, setLeftOffset] = useState(14);
-  // const [topOffset, setTopOffset] = useState(35);
-  // const [alignment, setAlignment] = useState('left');
-  // const [lineHeight, setLineHeight] = useState(4);
-  // const [multiline, setMultiline] = useState(true);
-  // const [rColor, setRColor] = useState(0);
-  // const [gColor, setGColor] = useState(0);
-  // const [bColor, setBColor] = useState(200);
-  const containerRef = useRef(null);
-  const [selectedBlockIndex, setSelectedBlockIndex] = useState("1");
+  const handleAdd = (key, value) => {
+    setMyMap(prevMap => {
+      const newMap = new Map(prevMap);
+      newMap.set(key, value);
+      return newMap;
+    });
+  };
 
-  // Paper Config
-  const [paperWidth, setPaperWidth] = useState(210);
-  const [paperHeight, setPaperHeight] = useState(105);
-  const [format, setFormat] = useState('svg');
-  const [configs, setConfigs] = useState([]);
-  // Zoom state: in percentages (100 = 100%, 150 = 150%, etc.)
-  const [zoom, setZoom] = useState(35);
-  const [blocks, setBlocks] = useState([
-   
-    {
-      id:"1",
-      name: "title",
-      changed:true, 
-      config: {
-        text: "A Warm Thank You to WunderPen !",
-        widthInMillimeters: 210,
-        fontSize: 5,
-        fontName: "david",
-        leftOffsetInMillimeters: 0,
-        topOffsetInMillimeters: 18,
-        multiline: true,
-        lineHeight: 0,
-        rotation: 0,
-        r: 0,
-        g: 0,
-        b: 0,
-        alignment: "center"
-      }
-    },
-    {
-      id:"2",
-      changed:true,
-
-      name: "sender",
-      config: {
-        text: "Rue Wafa Enfidha, 4030 Sousse, Tunisia",
-        widthInMillimeters: 33,
-        fontSize: 3,
-        fontName: "conrad",
-        leftOffsetInMillimeters: 157,
-        topOffsetInMillimeters: 84,
-        multiline: true,
-        lineHeight: 4,
-        rotation: -20,
-        r: 0,
-        g: 0,
-        b: 0,
-        alignment: "left"
-      }
-    },
-    {
-      id:"3",
-      changed:true,
-
-      name: "sender2",
-      config: {
-        text: "Samer Ben Mim,",
-        widthInMillimeters: 33,
-        fontSize: 4,
-        fontName: "conrad",
-        leftOffsetInMillimeters: 155,
-        topOffsetInMillimeters: 79,
-        multiline: true,
-        lineHeight: 4,
-        rotation: -20,
-        r: 0,
-        g: 0,
-        b: 0,
-        alignment: "left"
-      }
-    },
-
-    {
-      id:"4",
-      changed:true,
-
-      name: "date",
-      config: {
-        text: "2025-03-18",
-        widthInMillimeters: 50,
-        fontSize: 3,
-        fontName: "conrad",
-        leftOffsetInMillimeters: 160,
-        topOffsetInMillimeters: 8,
-        multiline: true,
-        lineHeight: 10,
-        rotation: 90,
-        r: 0,
-        g: 0,
-        b: 0,
-        alignment: "right"
-      }
-    },
-    {
-      id:"5",
-      changed:true,
-
-      name: "header",
-      config: {
-        text: "Dear WunderPen team :) ♥,",
-        widthInMillimeters: 180,
-        fontSize: 4,
-        fontName: "jessy",
-        leftOffsetInMillimeters: 18,
-        topOffsetInMillimeters: 25,
-        multiline: true,
-        lineHeight: 10,
-        rotation: 0,
-        r: 0,
-        g: 0,
-        b: 0,
-        alignment: "left"
-      }
-    },
- 
-    {
-      id:"6",
-      changed:true,
-
-      name: "content",
-      config: {
-        text: "Thank you so much for your warm welcome, comfortable accommodations, and exceptional hospitality. Your support made my integration smooth and enjoyable. My deepest gratitude to Ahmad, Siva, An-Guo, Steffi, Momo & Coco, and the entire team for your exceptional efforts in making me feel at home.",
-        widthInMillimeters: 185,
-        fontSize: 5,
-        fontName: "enrico",
-        leftOffsetInMillimeters: 17,
-        topOffsetInMillimeters: 39,
-        multiline: true,
-        lineHeight: 8,
-        rotation: 0,
-        r: 0,
-        g: 0,
-        b: 0,
-        alignment: "left"
-      }
-    },
-    {
-      id:"7",
-      changed:true,
-
-      name: "content",
-      config: {
-        text: "Wishing you all continued success and prosperity!",
-        widthInMillimeters: 185,
-        fontSize: 4,
-        fontName: "enrico",
-        leftOffsetInMillimeters: 17,
-        topOffsetInMillimeters: 79,
-        multiline: true,
-        lineHeight: 8,
-        rotation: 0,
-        r: 0,
-        g: 0,
-        b: 0,
-
-        alignment: "left"
-      }
-    },
- 
-   
-    
-    
-  ]);
-
-
-  // Handler to update block config values
+  const updateMapValue = (id, newValue) => {
+    setMyMap(prevMap => {
+      const newMap = new Map(prevMap); // Create a shallow copy
+      newMap.set(parseInt(id, 10), newValue);        // Overwrite or add new value
+      return newMap;                   // Update state
+    });
+  };
+  
+  
   const handleBlockChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, type, checked } = e.target
     setBlocks((prevBlocks) =>
-      prevBlocks.map((block, idx) => {
-        console.log(block.id != selectedBlockIndex)
-
-        if (block.id != selectedBlockIndex) return {
-          ...block, changed: false
-        };
-
-        if (name === 'name') {
-          
-          return { ...block, name: value, changed:true };
-        } else {
-          console.log("selectedBlockIndex",selectedBlockIndex,block.id)
-
-          // For the alignment field, simply use the value (no parseFloat needed)
-          const newVal =
-            name === 'alignment'
-              ? value :
-              name === 'multiline' ?
-              (value.toLowerCase() == "true")
-              : type === 'checkbox'
-              ? checked
-              : type === 'number'
-              ? parseFloat(value)
-              : value;
-          return {
-            ...block,
-            changed:true,
-            config: {
-              ...block.config,
-              [name]: newVal,
-            },
-          };
+      prevBlocks.map((block) => {
+        if (block.id != selectedBlockIndex) return { ...block, changed: false }
+        if (name === 'name') return { ...block, name: value, changed: true }
+        const newVal =
+          name === 'alignment'
+            ? value
+            : name === 'multiline'
+            ? value.toLowerCase() === 'true'
+            : type === 'checkbox'
+            ? checked
+            : type === 'number'
+            ? parseFloat((name=='r'||name=='g'||name=='b')?Math.max(value%255,0):value)
+            : value
+        return {
+          ...block,
+          changed: true,
+          config: {
+            ...block.config,
+            [name]: newVal,
+          },
         }
       })
-    );
-  };
-  const fonts = ['jessy', 'conrad', 'boyd',"david","adrian","direct"];
-  const debounceOptions = [50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
-const defaultConfig = {
-  name: 'Default',
-  fontSizeDraw: 10,
-  fontSizeOverlay: 60,
-  posX: 0,
-  posY: 0,
-  servoAngleUp: 60,
-  servoAngleHighUp: 50,
-  servoAngleDown: 80,
-  servoWaitTime: 80,
-  printerSpeed: 3000,
-  myAlignType: 'AlignLeft',
-  segmentLength: 0.5,
-  angleThreshold: (5.0 / 180.0) * 3.14159,
-  charDist: 0.0,
-  imperfectY: 0.5,
-  imperfectX: 2.0,
-  lineDist: 10.0,
-  rotate: 0,
-  offsetBorderX: 20,
-  offsetBorderY: 30,
-  offsetRightBorder: 10,
-  paperWidth: 210,
-  paperHeight: 297,
-  heightTopStripe: 15,
-  heightBottomStripe: 15,
-  heightRightStripe: 15,
-  heightLeftStripe: 15,
-  backGroundImageName: '',
-  repeatShiftX: 50,
-  repeatShiftY: 50,
-  repeatX: 0,
-  repeatY: 0,
-  createPreviewImages: true,
-  creationCanceled: false,
-  creationIsRunning: false,
-  picBoxDokSizeX: 0,
-  picBoxDokSizeY: 0,
-  curFontIndex: 0,
-  id:25
-};
-const [config, setConfig] = useState(defaultConfig);
-useEffect(() => {
-  if (containerRef.current) {
-    const scrollableDiv = containerRef.current;
-    
-    // Calculate center positions
-    const centerX = (scrollableDiv.scrollWidth - scrollableDiv.clientWidth) / 2;
-    const centerY = (scrollableDiv.scrollHeight - scrollableDiv.clientHeight) / 2;
-
-    // Scroll to center
-    scrollableDiv.scrollTo({
-      left: centerX,
-      top: centerY,
-      behavior: "smooth", // Optional: Smooth scrolling effect
-    });
+    )
   }
-}, [svgData]); // Runs when svgData updates
 
-  const styles = {
-    
-    container: {
-      maxWidth:"75%",
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      fontFamily: 'Arial, sans-serif',
-      width: '100%',
-      height: '100vh',
-      padding: '20px',
-      boxSizing: 'border-box',
-    },
-    header: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      width: '100%',
-      marginBottom: '20px',
-    },
-    dropdown: {
-      padding: '10px',
-      fontSize: '16px',
-      marginRight: '10px',
-    },
-    input: {
-      padding: '10px',
-      fontSize: '16px',
-      width: '100%',
-      marginBottom: '10px',
-      boxSizing: 'border-box',
-    },
-    button: {
-      padding: '10px',
-      fontSize: '16px',
-      cursor: 'pointer',
-      marginTop: '10px',
-    },
-    svgContainer: {
-      border: '1px solid #ccc',
-      minHeight: '500px',
-      width: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      marginTop: '10px',
-      overflow: 'auto', // enables scrolling
-      background: '#80808038', // Light gray
-      position: 'relative',
-    },
-    parametersUrlContainer: {
-      width: '100%',
-      marginTop: '10px',
-    },
-    parametersUrlLabelArea: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    parametersUrlTextarea: {
-      width: '100%',
-      minHeight: '80px',
-      fontFamily: 'monospace',
-      fontSize: '14px',
-      boxSizing: 'border-box',
-    },
-    metricsContainer: {
-      marginTop: '10px',
-      padding: '10px',
-      border: '1px solid #ddd',
-      width: '100%',
-      textAlign: 'center',
-    },
-    averageText: { color: 'red', fontWeight: 'bold' },
-    gCodeContainer: {
-      width: '100%',
-      marginTop: '10px',
-    },
-    gCodeTextArea: {
-      width: '100%',
-      minHeight: '100px',
-      fontFamily: 'monospace',
-      fontSize: '12px',
-      boxSizing: 'border-box',
-    },
-    
-  };
-  
-  const downloadFile = (content, fileName, contentType) => {
-    const blob = new Blob([content], { type: contentType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadGCode = () => {
-    downloadFile(gCodeData, "gcode.txt", "text/plain");
-  };
-
-  const handleDownloadSVG = () => {
-    downloadFile(svgData, "preview.svg", "image/svg+xml");
-  };
-
-  // Logs each request for metrics
   const logRequest = useCallback(() => {
-    const timestamp = Date.now();
+    const timestamp = Date.now()
     setRequestTimestamps((prev) => {
-      const updatedTimestamps = prev.filter((t) => timestamp - t <= 10000);
-      updatedTimestamps.push(timestamp);
-      setAverageRequests((updatedTimestamps.length / 10).toFixed(1));
-      return updatedTimestamps;
-    });
-    setTotalRequests((prev) => prev + 1);
-  }, []);
+      const updatedTimestamps = prev.filter((t) => timestamp - t <= 10000)
+      updatedTimestamps.push(timestamp)
+      setAverageRequests((updatedTimestamps.length / 10).toFixed(1))
+      return updatedTimestamps
+    })
+    setTotalRequests((prev) => prev + 1)
+  }, [])
 
-  // Resets metrics and counters
   const resetMetrics = () => {
-    setRequestTimestamps([]);
-    setTotalRequests(0);
-    setAverageRequests(0);
-  };
-
-  // Helper: ensure white background in SVG
-  function extractBeforeAfter(str, id) {
-    // Create the start tag based on the provided id
-    const startTag = `<g id='${id}'`;
-    
-    // Find the index of the start tag in the string
-    const startIndex = str.indexOf(startTag);
-    if (startIndex === -1) {
-      // If not found, return empty strings or handle as needed
-      return { before: "", after: "" };
-    }
-    
-    // Everything before the start tag
-    const before = str.substring(0, startIndex);
-    
-    // Find the index of the first occurrence of '</g>' after the start tag
-    const endIndex = str.indexOf("</g>", startIndex);
-    if (endIndex === -1) {
-      // If the closing tag isn't found, you may decide how to handle this case
-      return { before, after: "" };
-    }
-    
-    // Everything after the closing tag; adding the length of '</g>' to get the substring after it
-    const after = str.substring(endIndex + 4);
-    
-    return { before, after };
+    setRequestTimestamps([])
+    setTotalRequests(0)
+    setAverageRequests(0)
   }
-  function extractGId(str) {
-    // Find the starting index of the <g element.
-    const gIndex = str.indexOf("<g");
-    if (gIndex === -1) return null; // If not found, return null
-  
-    // Look for "id=" starting from the <g element
-    const idIndex = str.indexOf("id=", gIndex);
-    if (idIndex === -1) return null; // id attribute not found
-  
-    // The character immediately after "id=" should be a quote (either ' or ")
-    const quoteChar = str.charAt(idIndex + 3);
-    if (quoteChar !== '"' && quoteChar !== "'") return null; // Not a valid id attribute format
-  
-    // The actual id value starts after the quote
-    const startOfId = idIndex + 4;
-    // Find the closing quote for the id value
-    const endOfId = str.indexOf(quoteChar, startOfId);
-    if (endOfId === -1) return null; // Closing quote not found
-  
-    // Return the id substring between the quotes
-    return str.substring(startOfId, endOfId);
-  }
-  
-  // Example usage:
 
-  const addWhiteBackgroundAndBordersToSVG = (svgContent, paperWidth, paperHeight) => {
-    let index = 0;
-    let count = 0;
-        // Convert 10mm margin to pixels
-        const conversionFactor = 300; // px per inch
-      const dpi = 300;
-        const mmToInch = 25.4;
-        const marginLeft = config.heightLeftStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
-        const marginRight = config.heightRightStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
-        const marginTop = config.heightTopStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
-        const marginBottom = config.heightBottomStripe   / mmToInch  * conversionFactor; // Convert 10mm to px
-    
-    
-    // Borders as SVG <rect> elements
-    const borders = `
-      <rect x="0" y="0" width="100%" height="100%" fill="white"/>
-      <rect x="${marginLeft}" y="0" width="1" height="200%" fill="red"/> <!-- Left Border -->
-      <rect x="${paperWidth/mmToInch *dpi -marginRight}" y="0" width="1" height="100%" fill="red"/> <!-- Right Border -->
-      <rect x="0" y="${marginTop}" width="100%" height="1" fill="red"/> <!-- Top Border -->
-      <rect x="0" y="${paperHeight/mmToInch *dpi -marginBottom}" width="100%" height="1" fill="red"/> <!-- Bottom Border -->
-    `;
-
-    while ((index = svgContent.indexOf("id='", index)) !== -1) {
-      index ++
-        count++;
-        console.log(count+ " count")
-        if (count > 1) return svgContent.replace(/<svg([^>]+)>/, `<svg$1>${borders}`);
+  useEffect(() => {
+    if (containerRef.current) {
+      const scrollableDiv = containerRef.current
+      const centerX = (scrollableDiv.scrollWidth - scrollableDiv.clientWidth) / 2
+      const centerY = (scrollableDiv.scrollHeight - scrollableDiv.clientHeight) / 2
+      scrollableDiv.scrollTo({ left: centerX, top: centerY, behavior: 'smooth' })
     }
-      
+  }, [svgData])
 
-    if(!firstfetch){
-      console.log("!firstfetch")
-      const id = extractGId(svgContent);
-      const {before, after} = extractBeforeAfter(svgData,id)
-
-      svgContent = before + svgContent+ after;
-      console.log(after)
-
-    }
-
-  
-
-
-    
-
-  
-    // Insert the white background and borders after the opening <svg> tag
-    return svgContent.replace(/<svg([^>]+)>/, `<svg$1>${borders}`);
-  };
-  
   const generateGCode = async () => {
     try {
       const bodyData = {
-        fields: [
-          ...blocks.map((b,index)=>(
-            {
-              text: b.config.text,
-              widthInMillimeters: b.config.widthInMillimeters,
-              fontSize: b.config.fontSize,
-              fontName: b.config.fontName,
-              leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
-              topOffsetInMillimeters: b.config.topOffsetInMillimeters,
-              alignment: b.config.alignment,
-              multiline: b.config.multiline,
-              lineHeight: b.config.lineHeight,
-              rotate:b.config.rotation,
-              rgbColor:b.config.r + ","+b.config.g + "," + b.config.b,
-              id:b.id+""
-            }
-          )
-        )
-        
-        ],
+        fields: blocks.map((b) => ({
+          text: b.config.text,
+          widthInMillimeters: b.config.widthInMillimeters,
+          fontSize: b.config.fontSize,
+          fontName: b.config.fontName,
+          leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
+          topOffsetInMillimeters: b.config.topOffsetInMillimeters,
+          alignment: b.config.alignment,
+          multiline: b.config.multiline,
+          lineHeight: b.config.lineHeight,
+          rotate: b.config.rotation,
+          rgbColor: b.config.r + ',' + b.config.g + ',' + b.config.b,
+          id: b.id + '',
+        })),
         config: {
           paperWidthInMillimeters: paperWidth,
           paperHeightInMillimeters: paperHeight,
-          format: format,
-          //rgbColor: `${rColor},${gColor},${bColor}`,
-
+          format,
         },
         configId: selectedConfigId,
-      };
-  
-      const response = await fetch('http://wunderpen-inkloom-test.server.bett-ingenieure.de/gcode', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=',
-        },
-        body: JSON.stringify(bodyData),
-      });
-  
-      
-      const gCodeText = await response.text();
-      setGCodeData(gCodeText);
-    } catch (error) {
-      console.error('Error generating G-code:', error);
-      setGCodeData('Error: Could not generate G-code.');
-    }
-  };
-  
-  // Fetches the SVG data (POST request) and updates X-Parameters-Url
-  const fetchSVG = useCallback(
-    async (inputText, selectedFont) => {
-      console.log('ici fetch')
-      if (!inputText) return;
-      try {
-        const bodyData = {
-          fields: [
-            ...blocks.filter(b=>b.changed).map((b,index)=>(
-              {
-                text: b.config.text,
-                widthInMillimeters: b.config.widthInMillimeters,
-                fontSize: b.config.fontSize,
-                fontName: b.config.fontName,
-                leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
-                topOffsetInMillimeters: b.config.topOffsetInMillimeters,
-                alignment: b.config.alignment,
-                multiline: b.config.multiline,
-                lineHeight: b.config.lineHeight,
-                rotate:b.config.rotation,
-                rgbColor:b.config.r + ","+b.config.g + "," + b.config.b,
-                id:b.id+""
-              }
-            )
-          )
-          
-          ],
-          config: {
-            paperWidthInMillimeters: paperWidth,
-            paperHeightInMillimeters: paperHeight,
-            format: format,
-            //rgbColor: `${rColor},${gColor},${bColor}`,
-  
-          },
-          configId: selectedConfigId,
-        };
-
-        const response = await fetch('https://inkloom-test.bi-dev2.de/api/preview', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=',
-          },
-          body: JSON.stringify(bodyData),
-        });
-
-        if (!response.ok) {
-          throw new Error('Network response was not OK');
-        }
-
-        const data = await response.text();
-        const index = data.indexOf("<svg");
-        const gcode = data.slice(0, index);
-        setGCodeData(gcode)
-        const rawSvg = data.slice(index);
-
-
-        setSvgData(addWhiteBackgroundAndBordersToSVG(rawSvg, paperWidth, paperHeight));
-
-        const paramUrl = response.headers.get('X-Parameters-Url') || '';
-        setParametersUrl(paramUrl);
-
-        setLastSentText(inputText);
-        logRequest();
-      } catch (error) {
-        console.error('Error fetching SVG:', error);
-        setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>');
       }
-    },
-    [
-      selectedConfigId,
-
-      paperWidth,
-      paperHeight,
-      // rColor,
-      // gColor,
-      // bColor,
-      config.heightLeftStripe,
-      config.heightBottomStripe,
-      config.heightTopStripe,
-      config.heightRightStripe,
-      blocks,
-      format,
-      logRequest,
-    ]
-  );
-
-  // handleSendRequest
-  const handleSendRequest = useCallback(async () => {
-    if (!parametersUrl) {
-      alert('No X-Parameters-Url is available.');
-      return;
-    }
-    try {
-      const bodyData = {
-        fields: [
-          ...blocks.map((b,index)=>(
-            {
-              text: b.config.text,
-              widthInMillimeters: b.config.widthInMillimeters,
-              fontSize: b.config.fontSize,
-              fontName: b.config.fontName,
-              leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
-              topOffsetInMillimeters: b.config.topOffsetInMillimeters,
-              alignment: b.config.alignment,
-              multiline: b.config.multiline,
-              lineHeight: b.config.lineHeight,
-              rotate:b.config.rotation,
-              rgbColor:b.config.r + ","+b.config.g + "," + b.config.b,
-              id:b.id+""
-            }
-          )
+      var url = parametersUrl
+      .replace(
+        'preview',
+        'gcode'
+      )
+        .replace(
+          'wunderpen-inkloom-test.server.bett-ingenieure.de',
+          'inkloom-test.bi-dev2.de/api'
         )
+       
+
+         
         
-        ],
-        config: {
-          paperWidthInMillimeters: paperWidth,
-          paperHeightInMillimeters: paperHeight,
-          format: format,
-          //rgbColor: `${rColor},${gColor},${bColor}`,
-
-        },
-        configId: selectedConfigId,
-      };
-      const url = parametersUrl
-        .replace('http', 'https')
-        .replace('wunderpen-inkloom-test.server.bett-ingenieure.de', 'inkloom-test.bi-dev2.de/api');
-
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -708,110 +143,334 @@ useEffect(() => {
           'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=',
         },
         body: JSON.stringify(bodyData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not OK');
-      }
-
-      const data = await response.text();
-      const index = data.indexOf("<svg");
-      const gcode = data.slice(0, index);
-      setGCodeData(gcode)
-
-      const rawSvg = data.slice(index);      setSvgData(addWhiteBackgroundAndBordersToSVG(rawSvg, paperWidth, paperHeight));
-
-      const paramUrl = response.headers.get('X-Parameters-Url') || '';
-      setParametersUrl(paramUrl);
-
-      logRequest();
-    } catch (error) {
-      console.error('Error sending request with data param:', error);
-      setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>');
+      })
+      if (!response.ok) throw new Error()
+      
+      const gCodeText = await response.text()
+      setGCodeData(gCodeText)
+    } catch {
+      setGCodeData('Error: Could not generate G-code.')
     }
-  }, [
-    parametersUrl,
-//    textValue,
-    font,
-   
-    paperWidth,
-    paperHeight,
-    // rColor,
-    // gColor,
-    // bColor,
-    format,
-    selectedConfigId,
-    logRequest,
-  ]);
+  }
 
-  // Handle text changes
-  // const handleTextChange = (e) => {
-  //   setTextValue(e.target.value);
-  //   if (updateMode === 'onChange' && e.target.value) {
-  //     fetchSVG(e.target.value, font);
-  //   }
-  // };
-
-  // Debounce effect
-  // useEffect(() => {
-  //   if (updateMode === 'debounce') {
-  //     const interval = setInterval(() => {
-  //       if (textValue !== lastSentText) {
-  //         fetchSVG(textValue, font);
-  //       }
-  //     }, debounceInterval);
-  //     return () => clearInterval(interval);
-  //   }
-  // }, [textValue, lastSentText, fetchSVG, font, updateMode, debounceInterval]);
-
-  // Manual "Generate" button
-  const handleGenerate = () => {
-    setFirstfetch(false)
-    fetchSVG(blocks.find(b=>b.id == selectedBlockIndex)?.config["text"], font);
-  };
   useEffect(() => {
-    handleGenerate()
-  }, [
-    // paperWidth,paperHeight,   
-    // config.heightLeftStripe,
-    // config.heightBottomStripe,
-    // config.heightTopStripe,
-    // config.heightRightStripe,
-    blocks
-  ]);
+    if (myMap.size === 0) return;
 
-  // OnChange for config fields
+    const queryParams = [...myMap.entries()]
+      .map(([key, value]) => `${value}`)
+      .join('&');
+      
+    const urlStr = "https://inkloom-test.bi-dev2.de/api/preview?" + queryParams;
+    setParametersUrl(urlStr);
+  }, [myMap]);
+
+  useEffect(() => {
+    clearTimeout(debounceTimer)
+    setDebounceTimer(
+      setTimeout(() => {
+        handleSendRequest()
+      }, 150)
+    )
+    return () => {
+      clearTimeout(debounceTimer)
+    }
+  }, [paperHeight,paperWidth])
+  const fetchSVG = useCallback(
+    async (inputText,regenrate = false) => {
+      if (!inputText) return
+      try {
+        const b = regenrate ? blocks :blocks.filter((b) => b.changed)
+        const bodyData = {
+          fields: b.map((b) => ({
+            text: b.config.text,
+            widthInMillimeters: b.config.widthInMillimeters,
+            fontSize: b.config.fontSize,
+            fontName: b.config.fontName,
+            leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
+            topOffsetInMillimeters: b.config.topOffsetInMillimeters,
+            alignment: b.config.alignment,
+            multiline: b.config.multiline,
+            lineHeight: b.config.lineHeight,
+            rotate: b.config.rotation,
+            rgbColor: b.config.r + ',' + b.config.g + ',' + b.config.b,
+            id: b.id + '',
+          })),
+          config: {
+            paperWidthInMillimeters: paperWidth,
+            paperHeightInMillimeters: paperHeight,
+            format,
+          },
+          configId: selectedConfigId,
+        }
+        const response = await fetch('https://inkloom-test.bi-dev2.de/api/preview', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=',
+          },
+          body: JSON.stringify(bodyData),
+        })
+        if (!response.ok) throw new Error()
+        const data = await response.text()
+
+
+        setSvgData(
+          addWhiteBackgroundAndBordersToSVG(
+            data,
+            firstfetch,
+            svgData,
+            config,
+            paperWidth,
+            paperHeight
+          )
+        )
+   
+        const paramUrlCount = response.headers.get('X-Parameters-Url') || 0
+      
+        if(paramUrlCount!=1){
+          const newMap = new Map();
+          for (let i = 1; i <= paramUrlCount; ++i) {
+            const key = i;
+            const value = response.headers.get('X-Parameters-Url' + i);
+            newMap.set(key, value);
+          }
+          //setParametersUrl(urlStr)
+          setMyMap(newMap);
+          console.log(myMap)
+
+        }
+        else{              
+          for (let [header, value] of response.headers.entries()) {
+            if (header.toLowerCase().startsWith('x-parameters-url')) {
+
+              const id = header.slice('X-Parameters-Url'.length); // Extract the ID part
+              console.log(`Found ID: ${id}, Value: ${value}`);
+              if(id)
+              updateMapValue(id, value);
+            }
+          }
+        }
+  
+
+        logRequest()
+      } catch (e){
+        console.log(e)
+        setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>')
+      }
+    },
+    [blocks, paperWidth, paperHeight, format, selectedConfigId, logRequest, firstfetch, config, svgData]
+  )
+
+  const handleSendRequest = useCallback(async () => {
+    if (!parametersUrl) return
+    try {
+      const bodyData = {
+        fields: blocks.map((b) => ({
+          text: b.config.text,
+          widthInMillimeters: b.config.widthInMillimeters,
+          fontSize: b.config.fontSize,
+          fontName: b.config.fontName,
+          leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
+          topOffsetInMillimeters: b.config.topOffsetInMillimeters,
+          alignment: b.config.alignment,
+          multiline: b.config.multiline,
+          lineHeight: b.config.lineHeight,
+          rotate: b.config.rotation,
+          rgbColor: b.config.r + ',' + b.config.g + ',' + b.config.b,
+          id: b.id + '',
+        })),
+        config: {
+          paperWidthInMillimeters: paperWidth,
+          paperHeightInMillimeters: paperHeight,
+          format,
+        },
+        configId: selectedConfigId,
+      }
+     
+      var url = parametersUrl
+        .replace(
+          'wunderpen-inkloom-test.server.bett-ingenieure.de',
+          'inkloom-test.bi-dev2.de/api'
+        )
+       
+
+         
+        
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=',
+        },
+        body: JSON.stringify(bodyData),
+      })
+      if (!response.ok) throw new Error()
+      const data = await response.text()
+      
+      setSvgData(
+        addWhiteBackgroundAndBordersToSVG(
+          data,
+          firstfetch,
+          svgData,
+          config,
+          paperWidth,
+          paperHeight
+        )
+      )
+      const paramUrlCount = response.headers.get('X-Parameters-Url') || 0
+      
+        if(paramUrlCount!=1){
+          const newMap = new Map();
+          for (let i = 1; i <= paramUrlCount; ++i) {
+            const key = i;
+            const value = response.headers.get('X-Parameters-Url' + i);
+            newMap.set(key, value);
+          }
+          //setParametersUrl(urlStr)
+          setMyMap(newMap);
+          console.log(myMap)
+
+        }
+        else{              
+          for (let [header, value] of response.headers.entries()) {
+            if (header.toLowerCase().startsWith('x-parameters-url')) {
+
+              const id = header.slice('X-Parameters-Url'.length); // Extract the ID part
+              console.log(`Found ID: ${id}, Value: ${value}`);
+              if(id)
+              updateMapValue(id, value);
+            }
+          }
+        }
+      logRequest()
+    } catch {
+      setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>')
+    }
+  }, [parametersUrl, blocks, paperWidth, paperHeight, format, selectedConfigId, logRequest, firstfetch, config, svgData])
+  const handleSendRequestRegenrate = useCallback(async () => {
+    if (!parametersUrl) return
+    try {
+      const bodyData = {
+        fields: blocks.map((b) => ({
+          text: b.config.text,
+          widthInMillimeters: b.config.widthInMillimeters,
+          fontSize: b.config.fontSize,
+          fontName: b.config.fontName,
+          leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
+          topOffsetInMillimeters: b.config.topOffsetInMillimeters,
+          alignment: b.config.alignment,
+          multiline: b.config.multiline,
+          lineHeight: b.config.lineHeight,
+          rotate: b.config.rotation,
+          rgbColor: b.config.r + ',' + b.config.g + ',' + b.config.b,
+          id: b.id + '',
+        })),
+        config: {
+          paperWidthInMillimeters: paperWidth,
+          paperHeightInMillimeters: paperHeight,
+          format,
+        },
+        configId: selectedConfigId,
+      }
+     
+      var url = parametersUrl
+        .replace(
+          'wunderpen-inkloom-test.server.bett-ingenieure.de',
+          'inkloom-test.bi-dev2.de/api'
+        )
+       
+
+         
+        
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=',
+        },
+        body: JSON.stringify(bodyData),
+      })
+      if (!response.ok) throw new Error()
+      const data = await response.text()
+      
+      setSvgData(
+        addWhiteBackgroundAndBordersToSVG(
+          data,
+          firstfetch,
+          svgData,
+          config,
+          paperWidth,
+          paperHeight
+        )
+      )
+      const paramUrlCount = response.headers.get('X-Parameters-Url') || 0
+      
+        if(paramUrlCount!=1){
+          const newMap = new Map();
+          for (let i = 1; i <= paramUrlCount; ++i) {
+            const key = i;
+            const value = response.headers.get('X-Parameters-Url' + i);
+            newMap.set(key, value);
+          }
+          //setParametersUrl(urlStr)
+          setMyMap(newMap);
+          console.log(myMap)
+
+        }
+        else{              
+          for (let [header, value] of response.headers.entries()) {
+            if (header.toLowerCase().startsWith('x-parameters-url')) {
+
+              const id = header.slice('X-Parameters-Url'.length); // Extract the ID part
+              console.log(`Found ID: ${id}, Value: ${value}`);
+              if(id)
+              updateMapValue(id, value);
+            }
+          }
+        }
+      logRequest()
+    } catch {
+      setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>')
+    }
+  }, [parametersUrl, blocks, paperWidth, paperHeight, format, selectedConfigId, logRequest, firstfetch, config, svgData])
+
+  const handleGenerate = (regenrate = false) => {
+    setFirstfetch(false)
+    const val = blocks.find((b) => b.id == selectedBlockIndex)?.config.text
+    fetchSVG(val,regenrate)
+  }
+
+  useEffect(() => {
+    clearTimeout(debounceTimer)
+    setDebounceTimer(
+      setTimeout(() => {
+        handleGenerate()
+      }, 150)
+    )
+    return () => {
+      clearTimeout(debounceTimer)
+    }
+  }, [blocks])
+
   const onConfigChange = (setter) => (e) => {
     if (e.target.type === 'checkbox') {
-      setter(e.target.checked);
+      setter(e.target.checked)
     } else {
-      setter(e.target.type === 'number' ? Number(e.target.value) : e.target.value);
+      setter(e.target.type === 'number' ? Number(e.target.value) : e.target.value)
     }
-   // setTimeout(() => fetchSVG(textValue, font), 1);
-  };
-
-  // Layout for the small config + zoom
-  const smallConfigStyle = {
-    marginTop: '10px',
-    padding: '10px',
-    border: '1px solid #ccc',
-    fontSize: '12px',
-    width: '100%',
-  };
-  const smallInputStyle = { width: '38px', marginRight: '10px' };
-  const labelStyle = { marginRight: '5px' };
+  }
 
   return (
     <div style={{ display: 'flex', width: '100%' }}>
-      {/* Left Panel for Config */}
       <div style={{ width: '45%', margin: '20px 0', border: '1px solid black' }}>
         <ConfigForm
           handleBlockChange={handleBlockChange}
-          //setTextValue={setTextValue}
-          //textValue={textValue}
           selectedConfigId={selectedConfigId}
           setSelectedConfigId={setSelectedConfigId}
-          generatePreview={() => fetchSVG(blocks.find(b=>b.id == selectedBlockIndex)?.config["text"], font)}
+          generatePreview={() => {
+            const val = blocks.find((b) => b.id == selectedBlockIndex)?.config.text
+            fetchSVG(val)
+          }}
           configs={configs}
           config={config}
           setConfigs={setConfigs}
@@ -821,165 +480,101 @@ useEffect(() => {
           setBlocks={setBlocks}
           selectedBlockIndex={selectedBlockIndex}
           setSelectedBlockIndex={setSelectedBlockIndex}
-
-
         />
       </div>
-
-      {/* Right Panel for SVG Preview & Controls */}
       <div style={styles.container}>
-        <div style={styles.header}>
-          {/* Font Selection */}
-          {/* <select
-            style={styles.dropdown}
-            value={font}
-            onChange={(e) => {
-              setFont(e.target.value);
-              //if (updateMode === 'onChange') fetchSVG(textValue, e.target.value);
-            }}
-          >
-            {fonts.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select> */}
-         
-
-        
-          {/* Debounce Interval Selection */}
-     
-        </div>
-
-        {/* Text Input */}
+        <div style={styles.header} />
         <input
           type="text"
           style={styles.input}
-          value={blocks.find(b=>b.id == selectedBlockIndex)?.config["text"] }
+          value={blocks.find((b) => b.id == selectedBlockIndex)?.config.text || ''}
           onChange={handleBlockChange}
-          name='text'
-          placeholder="Type your text here..."
+          name="text"
         />
-
-        {/* On Submit Mode: "Generate" Button */}
-      
-
         <div style={styles.svgContainer} ref={containerRef}>
           <div
             style={{
-              alignSelf:'baseline',
+              alignSelf: 'baseline',
               transform: `scale(${zoom / 100})`,
               transformOrigin: 'center center',
             }}
           >
-            <div
-            dangerouslySetInnerHTML={{ __html: svgData }} />
+            <div dangerouslySetInnerHTML={{ __html: svgData }} />
           </div>
         </div>
-
-        {/* Extra Preview Config (including Zoom) */}
-        <div style={smallConfigStyle}>
-          <strong style={{ display: 'block', marginBottom: '5px' }}>Extra Preview Config:</strong>
-          <div style={{display:"flex",alignItems:"center"}}>
-
-          <label style={labelStyle}>Page Width (mm):</label>
-          <input
-            type="number"
-            value={paperWidth}
-            onChange={onConfigChange(setPaperWidth)}
-            style={smallInputStyle}
-          />
-
-          <label style={labelStyle}>Page Height (mm):</label>
-          <input
-            type="number"
-            value={paperHeight}
-            onChange={onConfigChange(setPaperHeight)}
-            style={smallInputStyle}
-          />
-           {/* <label style={labelStyle}>R:</label>
-          <input
-            type="number"
-            value={rColor}
-            onChange={onConfigChange(setRColor)}
-            style={smallInputStyle}
-          />
-           <label style={labelStyle}>G:</label>
-          <input
-            type="number"
-            value={gColor}
-            onChange={onConfigChange(setGColor)}
-            style={smallInputStyle}
-          />
-           <label style={labelStyle}>B:</label>
-          <input
-            type="number"
-            value={bColor}
-            onChange={onConfigChange(setBColor)}
-            style={smallInputStyle}
-          /> */}
-
-          {/* <label style={labelStyle}>Fmt:</label>
-          <select
-            value={format}
-            onChange={onConfigChange(setFormat)}
-            style={smallInputStyle}
-          >
-            <option value="svg">SVG</option>
-            <option value="png">PNG</option>
-            <option value="jpg">JPG</option>
-          </select> */}
-
-<button 
-style={{
-  marginLeft:"40px",
-  padding:"10px 15px"
-}}
-onClick={() => {
-            
-            containerRef.current?.scrollTo({
-  left: (containerRef.current.scrollWidth - containerRef.current.clientWidth) / 2,
-  top: (containerRef.current.scrollHeight - containerRef.current.clientHeight) / 2,
-  behavior: "smooth"
-})}}>
-  Center SVG
-</button>
-<button style={{
-  marginLeft:"40px",
-  padding:"10px 15px"
-}} onClick={handleDownloadGCode}>Download GCode</button>
-<button style={{
-  marginLeft:"40px",
-  padding:"10px 15px"
-}} onClick={handleDownloadSVG}>Download SVG</button>
-<div style={{display:"flex",justifyContent:"center",alignItems:"center",width: '380px'}}>
-<div style={{ marginRight: '5px', display: 'inline-block' }}>
-  Zoom:
-</div>
-<input
-  type="range"
-  min="1"
-  max="200"
-  value={zoom}
-  onChange={(e) => setZoom(Number(e.target.value) || 1)}
-  style={{ width: '200px' }}
-/>
-<span style={{ marginLeft: '8px' }}>{zoom}</span>
-</div>
-</div>
-
+        <div
+          style={{
+            marginTop: '10px',
+            padding: '10px',
+            border: '1px solid #ccc',
+            fontSize: '12px',
+            width: '100%',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <label style={{ marginRight: '5px' }}>Page Width (mm):</label>
+            <input
+              type="number"
+              value={paperWidth}
+              onChange={onConfigChange(setPaperWidth)}
+              style={{ width: '38px', marginRight: '10px' }}
+            />
+            <label style={{ marginRight: '5px' }}>Page Height (mm):</label>
+            <input
+              type="number"
+              value={paperHeight}
+              onChange={onConfigChange(setPaperHeight)}
+              style={{ width: '38px', marginRight: '10px' }}
+            />
+            <button
+              style={{ marginLeft: '40px', padding: '10px 15px' }}
+              onClick={() => {
+                containerRef.current?.scrollTo({
+                  left: (containerRef.current.scrollWidth - containerRef.current.clientWidth) / 2,
+                  top: (containerRef.current.scrollHeight - containerRef.current.clientHeight) / 2,
+                  behavior: 'smooth',
+                })
+              }}
+            >
+              Center SVG
+            </button>
+            <button
+              style={{ marginLeft: '40px', padding: '10px 15px' }}
+              onClick={() => downloadFile(gCodeData, 'gcode.txt', 'text/plain')}
+            >
+              Download GCode
+            </button>
+            <button
+              style={{ marginLeft: '40px', padding: '10px 15px' }}
+              onClick={() => downloadFile(svgData, 'preview.svg', 'image/svg+xml')}
+            >
+              Download SVG
+            </button>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '380px' }}>
+              <div style={{ marginRight: '5px', display: 'inline-block' }}>Zoom:</div>
+              <input
+                type="range"
+                min="1"
+                max="200"
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value) || 1)}
+                style={{ width: '200px' }}
+              />
+              <span style={{ marginLeft: '8px' }}>{zoom}</span>
+            </div>
+          </div>
         </div>
-
-        {/* Parameters URL + "Send Request" */}
         <div style={styles.parametersUrlContainer}>
           <div style={styles.parametersUrlLabelArea}>
             <label htmlFor="parametersUrl">X-Parameters-Url:</label>
-            <button
-              style={{ marginLeft: '10px', marginTop: '10px' }}
-              onClick={handleSendRequest}
-            >
-              Send Request
+            <div>
+            <button style={{ marginLeft: '10px', marginBottom: '5px',marginTop: '0px', padding:"10px" }} onClick={handleSendRequest}>
+              Generate Same Preview with this URL
             </button>
+            <button style={{ marginLeft: '10px', marginBottom: '5px',marginTop: '0px', padding:"10px" }} onClick={handleGenerate  }>
+              Generate Different Preview
+            </button>
+            </div>
           </div>
           <textarea
             id="parametersUrl"
@@ -989,35 +584,29 @@ onClick={() => {
           />
         </div>
         <div style={styles.gCodeContainer}>
-  <div>
-    <label>Generate G-Code:</label>
-    <button style={styles.button} onClick={generateGCode}>
-      Create G-Code
-    </button>
-  </div>
-  <textarea
-    id="gCodeOutput"
-    style={styles.gCodeTextArea}
-    readOnly
-    value={gCodeData}
-  />
-</div>
-
-        {/* Metrics Panel */}
+          <div>
+            <label>Generate G-Code For This Preview :</label>
+            <button style={styles.button} onClick={generateGCode}>
+              Create G-Code
+            </button>
+          </div>
+          <textarea
+            id="gCodeOutput"
+            style={styles.gCodeTextArea}
+            readOnly
+            value={gCodeData}
+          />
+        </div>
         <div style={styles.metricsContainer}>
           <p>Total Requests Sent: {totalRequests}</p>
           <p>
-            Average Requests Per Second:{' '}
-            <span style={styles.averageText}>{averageRequests}</span>
+            Average Requests Per Second: <span style={styles.averageText}>{averageRequests}</span>
           </p>
           <button style={styles.button} onClick={resetMetrics}>
             Reset Metrics
           </button>
-        
         </div>
       </div>
     </div>
-  );
+  )
 }
-
-export default App;
