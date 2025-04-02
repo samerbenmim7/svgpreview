@@ -13,7 +13,9 @@ function ConfigForm({
   blocks,
   setBlocks,
   selectedBlockIndex,
-  setSelectedBlockIndex
+  setSelectedBlockIndex,
+  svgData,
+  setSvgData
 }) {
   // Existing API config fetching logic...
   useEffect(() => {
@@ -61,10 +63,18 @@ function ConfigForm({
     setSelectedBlockIndex(parseInt(e.target.value, 10));
   };
 
+  function removeGroupById(groupId) {
+    const pattern = new RegExp(`<g[^>]*id=["']${groupId}["'][^>]*>[\\s\\S]*?<\\/g>`, 'g');
+     const s = svgData.replace(pattern, '');
+     setSvgData(s)
+     
+  }
   // Handler to add a new block with default values
   const handleAddBlock = () => {
     const newBlock = {
       name: "New Block",
+      id: blocks.length + 1 +"",
+
       config: {
         text: "New Text",
         widthInMillimeters: 100,
@@ -82,15 +92,19 @@ function ConfigForm({
       },
     };
     setBlocks([...blocks, newBlock]);
-    setSelectedBlockIndex(blocks.length); // Select the new block
+    setSelectedBlockIndex(blocks.length + 1 +""); // Select the new block
   };
 
   // Handler to delete the currently selected block
   const handleDeleteBlock = () => {
+    console.log(selectedBlockIndex)
     if (blocks.length === 0) return;
-    const newBlocks = blocks.filter((_, idx) => idx !== selectedBlockIndex);
+    const newBlocks = blocks.filter((b, idx) => b.id != selectedBlockIndex).map((e,index)=>({
+      ...e, id: index +""
+    }));
     setBlocks(newBlocks);
     setSelectedBlockIndex(newBlocks.length > 0 ? Math.max(0, newBlocks.length - 1) : 0);
+
   };
 
   
@@ -154,8 +168,8 @@ function ConfigForm({
             </option>
           ))}
         </select>
-        <button onClick={handleAddBlock} style={{ padding: '6px 10px', fontSize: '13px' }}>Add Block</button>
-        <button onClick={handleDeleteBlock} style={{ padding: '6px 10px', fontSize: '13px' }}>Delete Block</button>
+        {/* <button onClick={handleAddBlock} style={{ padding: '6px 10px', fontSize: '13px' }}>Add Block</button>
+        <button onClick={handleDeleteBlock} style={{ padding: '6px 10px', fontSize: '13px' }}>Delete Block</button> */}
       </div>
 
       {/* Block Configuration: Grid with 4 columns per row */}

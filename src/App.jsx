@@ -441,6 +441,7 @@ export default function App() {
   }
 
   useEffect(() => {
+    console.log("here")
     clearTimeout(debounceTimer)
     setDebounceTimer(
       setTimeout(() => {
@@ -479,6 +480,8 @@ export default function App() {
           blocks={blocks}
           setBlocks={setBlocks}
           selectedBlockIndex={selectedBlockIndex}
+          setSvgData = {setSvgData}
+          svgData = {svgData}
           setSelectedBlockIndex={setSelectedBlockIndex}
         />
       </div>
@@ -539,8 +542,9 @@ export default function App() {
               Center SVG
             </button>
             <button
+              disabled={gCodeData==''}
               style={{ marginLeft: '40px', padding: '10px 15px' }}
-              onClick={() => downloadFile(gCodeData, 'gcode.txt', 'text/plain')}
+              onClick={() => downloadFile(gCodeData, 'gcode.gcode', 'text/plain')}
             >
               Download GCode
             </button>

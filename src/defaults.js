@@ -123,7 +123,7 @@ export const defaultBlocks = [
     {
       id: '7',
       changed: true,
-      name: 'content',
+      name: 'footer',
       config: {
         text: 'Wishing you all continued success and prosperity!',
         widthInMillimeters: 185,
@@ -140,6 +140,7 @@ export const defaultBlocks = [
         alignment: 'left',
       },
     },
+    
   ]
 
 
