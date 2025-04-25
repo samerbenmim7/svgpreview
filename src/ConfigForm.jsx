@@ -1,6 +1,133 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  AiOutlineAlignLeft,
+  AiOutlineAlignCenter,
+  AiOutlineAlignRight
+} from 'react-icons/ai';
+import { FiChevronDown } from 'react-icons/fi';
+const PAPER_SIZES_MM = {
+  'A4':                   { width: 210, height: 297 },
+  'A4 (landscape)':       { width: 297, height: 210 },
 
-function ConfigForm({
+  'A5':                   { width: 148, height: 210 },
+  'A5 (landscape)':       { width: 210, height: 148 },
+
+  'A6':                   { width: 105, height: 148 },
+  'A6 (landscape)':       { width: 148, height: 105 },
+
+  /* NEW — DL card (aka DL+, slimline) */
+  'DL':                   { width: 210, height: 105 },
+  'DL (landscape)':       { width: 105, height: 210 }   // optional, if you need it
+
+  // keep any other specials…
+  // 'Greetings Card (A4) (landscape)': { width: 297, height: 210 }
+};
+/* ------------------------------------------------------------------ */
+/*  1.  CSS injected once into <head>                                 */
+/* ------------------------------------------------------------------ */
+const css = `
+.cfg-card{
+  width:420px;padding:24px;border-radius:16px;background:#fff;
+  box-shadow:0 4px 16px rgba(0,0,0,.06);font-family:system-ui,sans-serif;
+  position:relative
+}
+.cfg-row{display:flex;gap:12px;margin-bottom:18px}
+.cfg-select{
+  all:unset;flex:1;padding:14px 18px;border-radius:6px;
+  background:#4f8cff;color:#fff;font-weight:600;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center
+}
+.cfg-select svg{transition:.2s}
+.cfg-select.open svg{transform:rotate(180deg)}
+/* dropdown container + menu */
+.cfg-dd{position:relative}
+.cfg-menu{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#fff;border:1px solid #e2e8f0;border-radius:4px;
+  max-height:240px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.06);
+  z-index:10;padding:4px 0
+}
+.cfg-menu li{padding:10px 14px;cursor:pointer;font-size:15px;color:#1e293b}
+.cfg-menu li:hover{background:#f1f5f9}
+.cfg-menu li.selected{background:#f1f5f9;font-weight:600}
+/* textarea */
+.cfg-textarea{
+  width:100%;height:220px;resize:none;border:2px solid #d6dbe4;
+  border-radius:4px;padding:14px;font:500 16px/1.4 system-ui,sans-serif;
+  margin-bottom:18px
+}
+/* toolbar */
+.cfg-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.cfg-align button{
+  all:unset;border:2px solid #2140d0;padding:8px 12px;cursor:pointer
+}
+.cfg-align button+button{border-left:none}
+.cfg-align button.active,.cfg-align button:hover{background:#2140d0;color:#fff}
+.cfg-colours{display:flex;gap:20px}
+.cfg-dot{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer}
+/* font size buttons */
+.cfg-sizes{display:flex;justify-content:center;gap:30px;margin-top:8px}
+.cfg-sizes button{all:unset;font-size:18px;cursor:pointer;color:#1e293b;position:relative}
+.cfg-sizes button.active::after{
+  content:'';position:absolute;left:0;right:0;bottom:-6px;height:2px;background:#2140d0
+}`;
+if (!document.getElementById('cfg-style')) {
+  const style = document.createElement('style');
+  style.id = 'cfg-style';
+  style.innerHTML = css;
+  document.head.appendChild(style);
+}
+
+/* ------------------------------------------------------------------ */
+/*  2.  Small inline Dropdown component                               */
+/* ------------------------------------------------------------------ */
+function Dropdown({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function close(e) {
+      if (!ref.current?.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  return (
+    <div ref={ref} className="cfg-dd">
+      <button
+       style={{
+        display:"flex",
+        alignContent:"center",
+        justifyContent:"center"
+      }}
+        className={`cfg-select ${open ? 'open' : ''}`}
+        onClick={() => setOpen(o => !o)}
+      >
+        {value} <FiChevronDown/>
+      </button>
+
+      {open && (
+        <ul className="cfg-menu">
+          {options.map(opt => (
+            <li
+              key={opt}
+              className={opt === value ? 'selected' : ''}
+              onClick={() => { onChange(opt); setOpen(false); }}
+            >
+              {opt}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  3.  Main Configurator component                                   */
+/* ------------------------------------------------------------------ */
+export default function Configurator({
   selectedConfigId,
   setSelectedConfigId,
   generatePreview,
@@ -15,148 +142,56 @@ function ConfigForm({
   selectedBlockIndex,
   setSelectedBlockIndex,
   svgData,
-  setSvgData
+  setSvgData,
+  placeholders,
+  setPlaceholders,
+  isTemplate,
+  setIsTemplate,
+  align,
+  setAlign,
+  setPaperWidth,
+  setPaperHeight,
+  size,
+  setSize
 }) {
-  // Existing API config fetching logic...
-  useEffect(() => {
-    const fetchConfigs = async () => {
-      try {
-        const response = await fetch('http://wunderpen-inkloom-test.server.bett-ingenieure.de/printConfig', {
-          method: 'GET',
-          headers: { 'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=' },
-        });
-        const data = await response.json();
-        setConfigs(data);
-        setConfig(data?.[0]);
-        setSelectedConfigId(data?.[0].id);
-      } catch (error) {
-        console.error('Error fetching configs:', error);
-      }
-    };
-    fetchConfigs();
-  }, []);
+  const [colour, setColour] = useState('#304ffe');
+  const [font, setFont]     = useState('Stafford');
+  const [paper, setPaper]   = useState('DL');
+
+
+  
+  const colours  = ['#304ffe', '#000000', '#ff1744', '#00bfa5'];
+  const fonts    = ['Stafford', 'Bradley Hand', 'Alex Brush', 'Great Vibes'];
+  const papers   = [
+       'DL',
+    'DL (landscape)','A5','A5 (landscape)',
+    'A4','A4 (landscape)',
+    'A6','A6 (landscape)','Greetings Card (A4) (landscape)',
+ 
+  ];
+  useEffect(() => { handleBlockChange?.(null,'alignment'); }, [align]);
+  useEffect(() => { handleBlockChange?.(null,'size'); }, [size]);
 
   useEffect(() => {
-    const fetchSelectedConfig = async () => {
-      if (!selectedConfigId) return;
-      try {
-        const response = await fetch(`http://wunderpen-inkloom-test.server.bett-ingenieure.de/printConfig/${selectedConfigId}`, {
-          method: 'GET',
-          headers: { 'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=' },
-        });
-        const data = await response.json();
-        setConfig(data);
-        //generatePreview(); // Trigger preview after fetching
-      } catch (error) {
-        console.error('Error fetching selected config:', error);
-      }
-    };
-    fetchSelectedConfig();
-  }, [selectedConfigId]);
+    // look up this paper name in the table
+    const size = PAPER_SIZES_MM[paper];
+  
+    if (size) {
+      setPaperWidth(size.width);
+      setPaperHeight(size.height);
+    } else {
+      // optional: fall back or warn if the key is unknown
+      console.warn(`Unknown paper size: ${paper}`);
+    }
+  }, [paper]);
 
-  // ----- Blocks state and selected block index -----
-
-
-  // Handler for block selection dropdown
   const handleBlockSelectChange = (e) => {
     console.log(parseInt(e.target.value, 10))
     setSelectedBlockIndex(parseInt(e.target.value, 10));
   };
-
-  function removeGroupById(groupId) {
-    const pattern = new RegExp(`<g[^>]*id=["']${groupId}["'][^>]*>[\\s\\S]*?<\\/g>`, 'g');
-     const s = svgData.replace(pattern, '');
-     setSvgData(s)
-     
-  }
-  // Handler to add a new block with default values
-  const handleAddBlock = () => {
-    const newBlock = {
-      name: "New Block",
-      id: blocks.length + 1 +"",
-
-      config: {
-        text: "New Text",
-        widthInMillimeters: 100,
-        fontSize: 2,
-        fontName: "jessy",
-        leftOffsetInMillimeters: 50,
-        topOffsetInMillimeters: 30,
-        multiline: false,
-        lineHeight: 10,
-        rotation: 0,
-        r: 0,
-        g: 0,
-        b: 0,
-        alignment: "left", // default alignment
-      },
-    };
-    setBlocks([...blocks, newBlock]);
-    setSelectedBlockIndex(blocks.length + 1 +""); // Select the new block
-  };
-
-  // Handler to delete the currently selected block
-  const handleDeleteBlock = () => {
-    console.log(selectedBlockIndex)
-    if (blocks.length === 0) return;
-    const newBlocks = blocks.filter((b, idx) => b.id != selectedBlockIndex).map((e,index)=>({
-      ...e, id: index +""
-    }));
-    setBlocks(newBlocks);
-    setSelectedBlockIndex(newBlocks.length > 0 ? Math.max(0, newBlocks.length - 1) : 0);
-
-  };
-
-  
-
-  // Handler for API config changes (existing)
-  const handleChange = async (e) => {
-    const { name, value, type, checked } = e.target;
-    const updatedConfig = {
-      ...config,
-      [name]: type === 'checkbox' ? checked : type === 'number' ? parseFloat(value) : value,
-    };
-    setConfig(updatedConfig);
-    if (selectedConfigId) {
-      try {
-        await fetch(`http://wunderpen-inkloom-test.server.bett-ingenieure.de/printConfig/${selectedConfigId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Api-Key': 'd3JpdGUtYXBpa2V5LXgtaW5rbG9vbQ0K',
-          },
-          body: JSON.stringify(updatedConfig),
-        });
-        console.log(`Config ${selectedConfigId} updated successfully.`);
-      } catch (error) {
-        console.error('Error updating config:', error);
-      }
-    }
-  };
-
-  // Define the configuration keys with abbreviations and in desired order.
-  // Excluding the block "name" (handled in the select above)
-  const configKeys = [
-    { key: 'fontName', label: 'Font Name' },
-    { key: 'fontSize', label: 'Font Size' },
-    { key: 'leftOffsetInMillimeters', label: 'Left Offset (mm)' },
-    { key: 'topOffsetInMillimeters', label: 'Top Offset (mm)' },
-    { key: 'rotation', label: 'Rotation (deg)' },
-    { key: 'widthInMillimeters', label: 'Field Width (mm)' },
-    { key: 'lineHeight', label: 'Line Height(mm)' },
-    { key: 'alignment', label: 'Alignment' },
-    { key: 'r', label: 'Red Channel' },
-    { key: 'g', label: 'Green Channel' },
-    { key: 'b', label: 'Blue Channel' },
-    { key: 'multiline', label: 'Multiline' },
-
-  ];
-
   return (
-    <div style={{ width: '100%', padding: '10px' }}>
-      {/* Blocks Section */}
-      <h2 style={{ fontSize: '23px', marginBottom: '10px', textAlign: 'left' }}>Text Blocks</h2>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '1px' }}>
+    <div className="cfg-card">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '1px' }}>
         <select
           value={selectedBlockIndex}
           onChange={handleBlockSelectChange}
@@ -171,120 +206,57 @@ function ConfigForm({
         {/* <button onClick={handleAddBlock} style={{ padding: '6px 10px', fontSize: '13px' }}>Add Block</button>
         <button onClick={handleDeleteBlock} style={{ padding: '6px 10px', fontSize: '13px' }}>Delete Block</button> */}
       </div>
+      <br />
+      {/* top selectors */}
+      <div className="cfg-row" style={{
+        justifyContent:"space-evenly"
+      }}>
+        <Dropdown value={font}   onChange={setFont}   options={fonts}/>
+        <Dropdown value={paper}  onChange={setPaper}  options={papers}/>
+      </div>
 
-      {/* Block Configuration: Grid with 4 columns per row */}
-      <div style={{ marginBottom: '1px', padding: '2px' }}>
-        <h4 style={{ textAlign: 'left', marginBottom: '10px',fontSize: '14px' }}>Block Config</h4>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '8px',
-          maxWidth: '500px',
-          margin: '0 auto'
-        }}>
-          {configKeys.map((item, index) => (
-            <div key={index} style={{ display: 'flex', flexDirection: 'column' }}>
-              <label style={{ fontSize: '10px', fontWeight: 'bold' }}>{item.label}</label>
-              {item.key === 'alignment' ? (
-                <select
-                  name={item.key}
-                  value={blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] || 'left'}
-                  onChange={handleBlockChange}
-                  style={{ width: '70px', padding: '3px', fontSize: '12px' }}
-                >
-                  <option value="left">Left</option>
-                  <option value="center">Center</option>
-                  <option value="right">Right</option>
-                </select>
-              ) : item.key === 'fontName'?  <select
-              name={item.key}
-              value={blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] || 'jessy'}
-              onChange={handleBlockChange}
-              style={{ width: '70px', padding: '3px', fontSize: '12px' }}
-            >
-           <option value="jessy">jessy</option>
-<option value="conrad">conrad</option>
-<option value="boyd">boyd</option>
-<option value="david">david</option>
-<option value="adrian">adrian</option>
-<option value="enrico">enrico</option>
-<option value="adalbert">adalbert</option>
+      {/* message box */}
+      <textarea
+        className="cfg-textarea"
 
-            </select>: 
-            item.key === 'multiline'?  <select
-              name={item.key}
-              value={blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] }
-              onChange={handleBlockChange}
-              style={{ width: '70px', padding: '3px', fontSize: '12px' }}
-            >
-              <option value={true}>true</option>
-              <option value={false}>false</option>
-            </select>: 
-              
-              (
-                <input
-                  type={
-                    typeof blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] === 'boolean'
-                      ? 'checkbox'
-                      : typeof blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] === 'number'
-                        ? 'number'
-                        : 'text'
-                  }
-                  name={item.key}
-                  value={
-                    typeof blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] === 'boolean'
-                      ? undefined
-                      : blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key]
-                  }
-                  checked={
-                    typeof blocks.find(b=>b.id == selectedBlockIndex)?.config[item.key] === 'boolean'
-                      ? blocks.find(b=>b.id == selectedBlockIndex).config[item.key]
-                      : undefined
-                  }
-                  onChange={handleBlockChange}
-                  style={{ width: '70px', padding: '3px', fontSize: '12px' }}
-                />
-              )}
-            </div>
+        onChange={handleBlockChange}
+        value={blocks.find(b => b.id == selectedBlockIndex)?.config.text || ''}
+        name="text"
+        placeholder="Click to add your message"
+      />
+
+      {/* toolbar */}
+      <div className="cfg-toolbar">
+        <div className="cfg-align">
+          <button className={align === 'left'   ? 'active' : ''} onClick={() => setAlign('left')}  ><AiOutlineAlignLeft/></button>
+          <button className={align === 'center' ? 'active' : ''} onClick={() => setAlign('center')}><AiOutlineAlignCenter/></button>
+          <button className={align === 'right'  ? 'active' : ''} onClick={() => setAlign('right')} ><AiOutlineAlignRight/></button>
+        </div>
+
+        <div className="cfg-colours">
+          {colours.map(c => (
+            <button
+              key={c}
+              className="cfg-dot"
+              style={{ background: c, boxShadow: c === colour ? '0 0 0 3px #304ffe55' : 'none' }}
+              onClick={() => setColour(c)}
+            />
           ))}
         </div>
       </div>
 
-      {/* Existing API Configuration Settings */}
-      <h3 style={{ fontSize: '16px', marginBottom: '10px', textAlign: 'center' }}>API Config</h3>
-      <select
-        value={selectedConfigId || ''}
-        onChange={(e) => setSelectedConfigId(e.target.value)}
-        style={{ padding: '8px', fontSize: '14px', marginBottom: '15px', width: '90%', display: 'block', marginLeft: 'auto', marginRight: 'auto' }}
-      >
-        <option value="" disabled>Select a configuration...</option>
-        {configs.map((cfg) => (
-          <option key={cfg.id} value={cfg.id}>
-            {cfg.name}
-          </option>
+      {/* font‑size selector */}
+      <div className="cfg-sizes">
+        {['small','medium','large'].map(s => (
+          <button key={s} className={size===s?'active':''} onClick={() => setSize(s)}>
+            {s.charAt(0).toUpperCase()+s.slice(1)}
+          </button>
         ))}
-      </select>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', width: '90%', margin: '0 auto' }}>
-        {Object.keys(config)
-          .filter((k) => k !== 'id' && k !== 'name')
-          .map((key, index) => (
-            <div key={index} style={{ display: 'flex', flexDirection: 'column', fontSize: '12px' }}>
-              <label style={{ fontWeight: 'bold' }}>
-                {key.replace(/([A-Z])/g, ' $1')}
-              </label>
-              <input
-                type={typeof config[key] === 'boolean' ? 'checkbox' : typeof config[key] === 'number' ? 'number' : 'text'}
-                name={key}
-                value={typeof config[key] === 'boolean' ? '' : config[key]}
-                checked={typeof config[key] === 'boolean' ? config[key] : undefined}
-                onChange={handleChange}
-                style={{ padding: '5px', fontSize: '14px' }}
-              />
-            </div>
-          ))}
       </div>
+      
     </div>
+
   );
 }
 
-export default ConfigForm;
+const sizeMap = { small:'14px', medium:'18px', large:'24px' };

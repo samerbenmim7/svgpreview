@@ -18,10 +18,14 @@ export const styles = {
     },
     input: {
       padding: '10px',
-      fontSize: '16px',
+      fontSize: '25px',
       width: '100%',
       marginBottom: '10px',
       boxSizing: 'border-box',
+      color: "rgb(55, 61, 207)",
+      fontFeatureSettings: "ss05",
+        fontFamily: "Stafford"
+      
     },
     button: {
       padding: '10px',
@@ -30,7 +34,7 @@ export const styles = {
       marginTop: '10px',
     },
     svgContainer: {
-      border: '1px solid #ccc',
+   //   border: '1px solid #ccc',
       minHeight: '500px',
       width: '100%',
       display: 'flex',
@@ -75,5 +79,6 @@ export const styles = {
       fontSize: '12px',
       boxSizing: 'border-box',
     },
+    
   }
   
