@@ -273,8 +273,8 @@ if(text){
             widthInMillimeters: b.config.widthInMillimeters,
             fontSize: b.config.fontSize,
             fontName: b.config.fontName,
-            leftOffsetInMillimeters: parseInt(b.config.leftOffsetInMillimeters),
-            topOffsetInMillimeters: parseInt(b.config.topOffsetInMillimeters),
+            leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
+            topOffsetInMillimeters: b.config.topOffsetInMillimeters,
             topdragOffsetInMillimeters :  b.config.topdragOffsetInMillimeters,
             leftdragOffsetInMillimeters :  b.config.leftdragOffsetInMillimeters,
 
@@ -312,7 +312,12 @@ if(text){
         if (!response.ok) throw new Error()
         const data = await response.text()
 
-       
+        requestAnimationFrame(() => {
+          setPositions((prev) => ({
+            ...prev,
+            [0]: { x: 0, y: 0 }
+          }));
+        });
         setSvgData(
           addWhiteBackgroundAndBordersToSVG(
             data,
@@ -553,13 +558,13 @@ if(text){
   }, [parametersUrl, blocks, paperWidth, paperHeight, format, selectedConfigId, logRequest, firstfetch, config, svgData])
 
   const handleGenerate = (regenrate = true) => {
-    setPositions((prev) => ({
-      ...prev,
-      [0]: {
-        x: 0,
-        y: 0,
-      },
-    }));
+    // setPositions((prev) => ({
+    //   ...prev,
+    //   [0]: {
+    //     x: 0,
+    //     y: 0,
+    //   },
+    // }));
     setFirstfetch(false)
     
     const val = blocks.find((b) => b.id == selectedBlockIndex)?.config.text
@@ -691,9 +696,9 @@ if(text){
         y: (positions[id]?.y || 0) + delta.y,
       };
     
-      const mmX = parseInt(newPos.x / PX_PER_MM * 100 / zoom);
-      const mmY = parseInt(newPos.y / PX_PER_MM * 100 / zoom);
-    
+      const mmX = newPos.x / PX_PER_MM * 100 / zoom;
+      const mmY = newPos.y / PX_PER_MM * 100 / zoom;
+    console.log(mmX)
       setPositions((prev) => ({
         ...prev,
         [id]: newPos,

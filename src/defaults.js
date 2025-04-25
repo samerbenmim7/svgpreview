@@ -126,7 +126,7 @@ export const defaultBlocks = [
       changed: true,
       name: 'header',
       config: {
-        text: 'Dear {{COMPANY}} team :) ,',
+        text: 'Dear {{COMPANY}} team :) ,Thank you so much for your warm welcome, comfortable accommodations, and exceptional hospitality. Your support made my integration smooth and enjoyable. My deepest gratitude to Ahmad, {{NAME1}}, An-Guo, Steffi, Momo & Coco, and the entire team for your exceptional efforts in making me feel at home. Thank you so much for your warm welcome, comfortable accommodations, and exceptional hospitality. Your support made my integration smooth and enjoyable. My deepest gratitude to Ahmad, {{NAME1}}, An-Guo, Steffi, Momo & Coco, and the entire team for your exceptional efforts in making me feel at home. ',
         widthInMillimeters: 180,
         fontSize: 4,
         fontName: 'jessy',
