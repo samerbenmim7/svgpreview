@@ -1,28 +1,51 @@
-import React from 'react';
-import { useDraggable } from '@dnd-kit/core';
+// DraggableGroup.jsx
+import React, { useRef,useState } from 'react';
+import Draggable from 'react-draggable';
 
-export default function DraggableGroup({ svgString, zoom = 100, id, position }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id });
+export default function DraggableGroup({
+  svgString,
+  zoom,
+  position,
+  onDrag,
+  onStop,
+  index,
+  setSelectedBlockIndex
+}) {
+  const nodeRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const scale = zoom / 100;
+  const handleStop = () => setIsDragging(false);
+  const handleStart = () => {
+    setSelectedBlockIndex(index)
+    console.log(index)
+    setIsDragging(true)
+  }
 
-  const finalX = (position?.x || 0) /scale + (transform?.x || 0) /scale;
-  const finalY = (position?.y || 0) /scale + (transform?.y || 0) /scale;
 
-  const style = {
-    transform: `translate(${finalX}px, ${finalY}px) `,
-    transformOrigin: 'top left',
-    cursor: 'move',
-  };
+    
 
   return (
-    <g
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      pointerEvents="bounding-box"
-      dangerouslySetInnerHTML={{ __html: svgString }}
-    />
+    <Draggable
+      nodeRef={nodeRef}
+      scale={zoom / 100}
+      position={position}      
+      onStart={handleStart}
+      onDrag={onDrag}
+      onStop={(e,data)=>{onStop(e,data); handleStop()}}
+      defaultClassName="draggable"
+      defaultClassNameDragging="draggable-active"
+      // bounds={bounds} 
+
+    >
+      <g
+        ref={nodeRef}
+        pointerEvents="bounding-box"
+        dangerouslySetInnerHTML={{ __html: svgString }}
+        style={{
+            outline: isDragging ? '2px dashed #4caf50' : 'none',
+            transition: 'outline 0.2s ease-in-out',
+          }}
+      />
+    </Draggable>
   );
 }

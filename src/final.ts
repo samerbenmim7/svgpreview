@@ -1,28 +1,33 @@
 import React, { useRef, useState, useEffect, useCallback,useLayoutEffect } from 'react'
 import ConfigForm from './ConfigForm'
+import DraggableGroup from './Components/DraggableGroup'
+import { styles } from './styles'
 import {
   addWhiteBackgroundAndBordersToSVG,
   downloadFile,jsxElement,
   extractGId
 } from './Utils/utils.js'
 
+import {PX_PER_MM} from './Utils/const.js'
 
 import { defaultConfig, defaultBlocks,defaultBlocksMap } from './defaults'
 import './Configurator.css';
-import SvgCard from './Components/SvgCard.jsx'
 
+// useInteractDragRotate.js
 export default function App() {
-  const [positions, setPositions] = useState({}); 
+  const [positions, setPositions] = useState({}); // id → { x, y }
+ 
   const [svgData, setSvgData] = useState('')
   const [firstfetch, setFirstfetch] = useState(true)
   const [parametersUrl, setParametersUrl] = useState('')
   const [selectedConfigId, setSelectedConfigId] = useState(25)
   const [gCodeData, setGCodeData] = useState('')
   const containerRef = useRef(null)
-  const [selectedBlockIndex, setSelectedBlockIndex] = useState(1)
+  const [selectedBlockIndex, setSelectedBlockIndex] = useState('1')
   const [paperWidth, setPaperWidth] = useState(210)
   const [paperHeight, setPaperHeight] = useState(105)
   const [format, setFormat] = useState('svg')
+  const [zoom, setZoom] = useState(27)
   const [config, setConfig] = useState(defaultConfig)
   const [configs, setConfigs] = useState([])
   const [blocks, setBlocks] = useState(defaultBlocks)
@@ -33,12 +38,18 @@ export default function App() {
   const [size, setSize]     = useState('medium');
   const [svgGroups,setSvgGroups] = useState([]);
   const [lastUpdatedBlockId, setLastUpdatedBlockId] = useState(null);
+
   const [blocksMap, setBlocksMap] = useState(defaultBlocksMap);
+
+
 
   const [placeholders, setPlaceholders] = useState([
      { name: 'COMPANY', value: 'WunderPen' },
      { name: 'NAME1', value: 'Siva' },
      { name: 'SENDER', value: 'Samer Ben Mim,' }
+
+     
+
   ]);
 
 
@@ -51,7 +62,8 @@ export default function App() {
   };
   
   
-  const handleBlockChange = (e, text) => { 
+  const handleBlockChange = (e, text) => {
+    
     let {
       name   = null,
       value  = null,
@@ -127,7 +139,66 @@ if(text){
     }
   }, [svgData])
 
+  const generateGCode = async () => {
+    try {
+      const bodyData = {
+        fields: blocks.map((b) => ({
+          text: b.config.text,
+          widthInMillimeters: b.config.widthInMillimeters,
+          fontSize: b.config.fontSize,
+          fontName: b.config.fontName,
+          leftOffsetInMillimeters: b.config.leftOffsetInMillimeters,
+          topOffsetInMillimeters: b.config.topOffsetInMillimeters,
+          alignment: b.config.alignment,
+          multiline: b.config.multiline,
+          lineHeight: b.config.lineHeight,
+          rotate: b.config.rotation,
+          rgbColor: b.config.r + ',' + b.config.g + ',' + b.config.b,
+          id: b.id + '',
+        })),
+        config: {
+          paperWidthInMillimeters: paperWidth,
+          paperHeightInMillimeters: paperHeight,
+          format,
+        },
+        configId: selectedConfigId,
+        placeholdersValues:placeholders.reduce((acc, ph) => {
+          if (ph.name) {
+            acc[ph.name] = ph.value;
+          }
+          return acc;
+        }, {}),
+        isTemplate 
+      }
+      var url = parametersUrl
+      .replace(
+        'preview',
+        'gcode'
+      )
+        .replace(
+          'wunderpen-inkloom-test.server.bett-ingenieure.de',
+          'inkloom-test.bi-dev2.de/api'
+        )
+       
 
+         
+        
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=',
+        },
+        body: JSON.stringify(bodyData),
+      })
+      if (!response.ok) throw new Error()
+      
+      const gCodeText = await response.text()
+      setGCodeData(gCodeText)
+    } catch {
+      setGCodeData('Error: Could not generate G-code.')
+    }
+  }
 
   useEffect(() => {
     if (myMap.size === 0) return;
@@ -158,7 +229,8 @@ if(text){
     async (inputText,regenrate = true) => {
       if (!inputText) return
       try {
-        const b = regenrate ? blocks :blocks.filter((b) => b.changed)
+        console.log(blocks)
+        const b = regenrate ? [...blocks] :blocks.filter((b) => b.changed)
         const bodyData = {
           fields: b.map((b) => ({
             text: b.config.text,
@@ -243,6 +315,7 @@ if(text){
         }
   
 
+       // logRequest()
 
 
 
@@ -251,31 +324,17 @@ if(text){
         setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>')
       }
     },
-    [ blocks, selectedBlockIndex,paperWidth, paperHeight, format, selectedConfigId, firstfetch, config, svgData, blocksMap, isTemplate,
+    [ blocks,paperWidth, paperHeight, format, selectedConfigId, firstfetch, config, svgData, blocksMap, isTemplate,
       placeholders]
   )
-
-
-
   useEffect(() => {
     if (!svgData) return;
-  
-    const splittedData = svgData.split('\n').slice(1, -1);
-  
-    setSvgGroups(prev => {
-      const updated = new Map(prev);
-  
-      splittedData.forEach(block => {
-        const id = extractGId(block);
-        if (id != null) {
-          updated.set(id, block); 
-        }
-      });
-  
-      return updated;
-    });
-  }, [svgData]);
-  
+    const splittedData = svgData.split('\n').slice(1, -1)
+
+    // Todo solve when u cant extract id
+    setSvgGroups( splittedData.map(block => [extractGId(block), block]));
+
+  }, [svgData]);  
 
   const handleSendRequest = useCallback(async () => {
     if (!parametersUrl) return
@@ -461,7 +520,15 @@ if(text){
   }, [parametersUrl, blocks, paperWidth, paperHeight, format, selectedConfigId, firstfetch, config, svgData])
 
   const handleGenerate = (regenrate = true) => {
+    // setPositions((prev) => ({
+    //   ...prev,
+    //   [0]: {
+    //     x: 0,
+    //     y: 0,
+    //   },
+    // }));
     setFirstfetch(false)
+    
     const val = blocks.find((b) => b.id == selectedBlockIndex)?.config.text
     fetchSVG(val,regenrate)
   }
@@ -470,26 +537,84 @@ if(text){
     clearTimeout(debounceTimer)
     setDebounceTimer(
       setTimeout(() => {
-        handleGenerate(false)
+        handleGenerate()
       }, 150)
     )
     return () => {
       clearTimeout(debounceTimer)
     }
   }, [blocks, isTemplate,placeholders])
-
-
   useEffect(() => {
     handleGenerate()
   }, [])
-
-
+  const onConfigChange = (setter) => (e) => {
+    if (e.target.type === 'checkbox') {
+      setter(e.target.checked)
+    } else {
+      setter(e.target.type === 'number' ? Number(e.target.value) : e.target.value)
+    }
+  }
   const cardRef = useRef(null);
 
-
-
+  // These will keep track of the current tilt angles and target tilt angles.
+  const currentTilt = useRef({ x: 0, y: 0 });
+  const targetTilt = useRef({ x: 0, y: 0 });
   
+  // Configuration values similar to your jQuery tilt options.
+  const maxTilt = 12; // maximum tilt in degrees
+  const perspective = 1500; // in px, for the 3D perspective
+  const scale = 1.01;
+  const speed = 0.05; // interpolation factor (adjust for faster/slower follow)
 
+  // When the mouse moves, compute the relative position from the card's center.
+  const handleMouseMove = (event) => {
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const diffX = event.clientX - centerX;
+      const diffY = event.clientY - centerY;
+
+      // Normalize differences based on half the card's width and height.
+      const normX = diffX / (rect.width / 2);
+      const normY = diffY / (rect.height / 2);
+
+      const clampedNormX = Math.max(-.2, Math.min(.2, normX));
+      const clampedNormY = Math.max(-.2, Math.min(.2, normY));
+
+      // Calculate the target tilt angles (invert the X tilt for natural effect).
+      targetTilt.current.x = clampedNormY * maxTilt * -1;
+      targetTilt.current.y = clampedNormX * maxTilt;
+    }
+  };
+ 
+  // Animation loop: slowly interpolate current tilt to target tilt.
+  
+  const handleMouseLeave = () => {
+    // targetTilt.current.x = 0;
+    // targetTilt.current.y = 0;
+  };
+  const animateTilt = () => {
+    currentTilt.current.x += (targetTilt.current.x - currentTilt.current.x) * speed;
+    currentTilt.current.y += (targetTilt.current.y - currentTilt.current.y) * speed;
+
+    if (cardRef.current) {
+      cardRef.current.style.transform = `
+        perspective(${perspective}px)
+        rotateX(${currentTilt.current.x}deg)
+        rotateY(${currentTilt.current.y}deg)
+        scale(${scale})
+      `;
+    }
+    requestAnimationFrame(animateTilt);
+  };
+
+  // Start the animation loop when the component mounts.
+  useEffect(() => {
+    requestAnimationFrame(animateTilt);
+  }, []);
+
+  const [isFlipped, setIsFlipped] = useState(false);
   const gRef = useRef(null);
   const [bbox, setBbox] = useState(null);
   
@@ -499,18 +624,165 @@ if(text){
       setBbox({ x, y, width, height });
     }
   }, []);
+  const newsstyles = {
+    svgContainer: {
+      perspective: '1000px', // Needed to give the 3D effect
+      width: '300px',
+      height: '300px',
+      margin: '0 auto',
+    },
+    flipCardInner: {
 
+      transition: 'transform 0.6s',
+      transformStyle: 'preserve-3d',
+      transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+    },
+    flipCardSide: {
+      position: 'absolute',
+      width: '100%',
+      height: '100%',
+      //backfaceVisibility: 'hidden',
+    },
+    flipCardBack: {
+      transform: 'rotateY(180deg)',
+    },
+  };
     const nodeRef = useRef(null);
 
+    const handleDragEnd = (event,data,id) => {
+      console.log("drag element: " ,id)
+      const newPos = {
+        x: (positions[id]?.x || 0) + data.x,
+        y: (positions[id]?.y || 0) + data.y,
+      };
+    
+      const mmX = newPos.x / PX_PER_MM ;
+      const mmY = newPos.y / PX_PER_MM ;
+   
+      setPositions((prev) => ({
+        ...prev,
+        [id]: newPos,
+      }));
+
+    //  setTimeout(() => {
+        setBlocks((prevBlocks) =>
+          prevBlocks.map((block) => {
+          
+            if (block.id != id) return block;
 
 
+            console.log("edit block : ",block.id)
+            return {
+              ...block,
+              config: {
+                ...block.config,
+                topOffsetInMillimeters: block.config.topOffsetInMillimeters+ mmY,
+                leftOffsetInMillimeters:  block.config.leftOffsetInMillimeters+mmX,
+              },
+            };
+          })
+        );
+    
+      
+      // }, 1000);
+    };
+    // const svgRef = useRef(null);
+    // const [svgBounds, setSvgBounds] = useState(null);
+    
+    // useEffect(() => {
+    //   if (svgRef.current) {
+    //     const bbox = svgRef.current.getBoundingClientRect();
+    //     setSvgBounds({
+    //       left: 0,
+    //       top: 0,
+    //       right: bbox.width,
+    //       bottom: bbox.height,
+    //     });
+    //   }
+    // }, [svgData]);
 
+    useEffect(() => {
+    console.log("changed",blocks)
+    }, [blocks])
 
-
+    
   return (
     <div style={{ display: 'flex', width: '100%' }}>
    
-      <SvgCard svgGroups = {svgGroups} setBlocks={setBlocks} setPositions={setPositions} positions={positions} setSelectedBlockIndex={setSelectedBlockIndex} containerRef={containerRef} cardRef={cardRef} />
+      <div style={styles.container}>
+    
+        <div style={styles.header} />
+
+        <div style={styles.svgContainer} ref={containerRef}
+    
+        >
+          <div
+         style={{
+          alignSelf: 'baseline',
+          transform: `${isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'} scale(${zoom / 100})`,
+          transformOrigin: 'center center',
+          transition: 'transform .6s',
+        }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          >
+              
+            <div
+                
+            ref={cardRef}
+            style={{
+              boxShadow: '0 10px 16px #bbb', // Added container shadow
+              border: "1px solid #ddd",
+              borderRadius: '10px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              // The following minimal styling ensures the card is visible without extra colors.
+              background: 'rgba(255, 255, 255, 0.15)',
+              color: 'white',
+              // Make sure the element is positioned in the document flow;
+              // since we only apply a transform, its layout position stays unchanged.
+              position: 'relative',
+              willChange: 'transform',
+              cursor: 'pointer'
+             // backfaceVisibility: 'hidden',
+
+            }}
+         
+            >
+
+<svg  id="svgPrev"xmlns="http://www.w3.org/2000/svg" width="2480.315" height="1240.1575">
+      <rect x="0" y="0" width="100%" height="100%" fill="white"></rect>
+
+
+    
+
+
+      {Array.from(svgGroups).map(([key, value]) => {
+
+const position = positions[key] || { x: 0, y: 0 };
+   return( <DraggableGroup
+    key={key}
+    svgString={value}
+    zoom={zoom}
+    onStop={(e,data)=>handleDragEnd(e,data,key)}
+    position={position}
+  />)
+})}
+
+
+
+
+</svg>
+            </div>
+           
+            
+              </div>
+        </div>
+      
+
+      </div>
       <button style={{ marginLeft: '10px', marginBottom: '5px',marginTop: '0px', padding:"10px" }} onClick={handleGenerate  }>
               Generate Different Preview
             </button>
@@ -520,12 +792,12 @@ if(text){
           selectedConfigId={selectedConfigId}
           setSelectedConfigId={setSelectedConfigId}
           generatePreview={() => {
-            console.log(selectedBlockIndex)
             const val = blocks.find((b) => b.id == selectedBlockIndex)?.config.text
             fetchSVG(val)
           }}
           setPaperHeight= {setPaperHeight}
           setPaperWidth= {setPaperWidth}
+
           align={align}
           setAlign={setAlign}
           configs={configs}
@@ -546,7 +818,10 @@ if(text){
           size={size}
           setSize={setSize}
         />
+        
       </div>
+
+    
     </div>
   )
 }

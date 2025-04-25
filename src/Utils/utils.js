@@ -22,7 +22,7 @@ export function extractBeforeAfter(str, id) {
     const startOfId = idIndex + 4
     const endOfId = str.indexOf(quoteChar, startOfId)
     if (endOfId === -1) return null
-    return str.substring(startOfId, endOfId)
+    return parseInt(str.substring(startOfId, endOfId))
   }
   
   export function addWhiteBackgroundAndBordersToSVG(
