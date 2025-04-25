@@ -687,24 +687,24 @@ if(text){
   };
     const nodeRef = useRef(null);
 
-    const handleDragEnd = (event) => {
+    const handleDragEnd = (event,data) => {
       const { delta, active } = event;
-      const id = active.id ;
-    
+      const id =0 ;
+      console.log(event)
       const newPos = {
-        x: (positions[id]?.x || 0) + delta.x,
-        y: (positions[id]?.y || 0) + delta.y,
+        x: (positions[id]?.x || 0) + data.x,
+        y: (positions[id]?.y || 0) + data.y,
       };
     
-      const mmX = newPos.x / PX_PER_MM * 100 / zoom;
-      const mmY = newPos.y / PX_PER_MM * 100 / zoom;
+      const mmX = newPos.x / PX_PER_MM ;
+      const mmY = newPos.y / PX_PER_MM ;
     console.log(mmX)
       setPositions((prev) => ({
         ...prev,
         [id]: newPos,
       }));
 
-      setTimeout(() => {
+//      setTimeout(() => {
         setBlocks((prevBlocks) =>
           prevBlocks.map((block) => {
             console.log(id+1,block.id)
@@ -713,15 +713,15 @@ if(text){
               ...block,
               config: {
                 ...block.config,
-                topOffsetInMillimeters: mmY,
-                leftOffsetInMillimeters: mmX,
+                topOffsetInMillimeters: block.config.topOffsetInMillimeters+ mmY,
+                leftOffsetInMillimeters:  block.config.leftOffsetInMillimeters+mmX,
               },
             };
           })
         );
     
       
-      }, 1);
+    //  }, 1);
     };
   
 
@@ -776,25 +776,35 @@ if(text){
 
 <svg xmlns="http://www.w3.org/2000/svg" width="2480.315" height="1240.1575">
       <rect x="0" y="0" width="100%" height="100%" fill="white"></rect>
-      <DndContext onDragEnd={handleDragEnd}
 
-      >
+
+    
+
+
+
+      
 
       {svgGroups.map((g, i) => {
         const id = i;
         const position = positions[id] || { x: 0, y: 0 };
 
         return (
-          <DraggableGroup
-            key={id}
-            id={id}
-            svgString={g}
-            zoom={zoom}
-            position={position}
-          />
+          <Draggable  key={i} nodeRef={nodeRef} scale={zoom / 100}
+        defaultClassName="draggable"
+       // onDrag={handleDragEnd}
+        /* ▼ automatically swapped in while the pointer is down */
+        defaultClassNameDragging="draggable-active"
+        onStop={handleDragEnd}
+        position={position}
+      >
+      <g      
+      
+      ref={nodeRef}   pointerEvents="bounding-box"    dangerouslySetInnerHTML={{ __html: g }} 
+      >
+      </g>
+       </Draggable>
         );
       })}
-    </DndContext>
 
 
 </svg>
