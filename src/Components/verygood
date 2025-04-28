@@ -11,22 +11,24 @@ export default function DraggableGroup({
   index,
   setSelectedBlockIndex
 }) {
+    const nodeRef = useRef(null);
     const [isCorrected, setIsCorrected] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
     const [localPos, setLocalPos] = useState(position);
+    const pendingStopRef = useRef(null);
 
-  const nodeRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-//   useEffect(() => {
-//     if (!isDragging) {
-//       setLocalPos({x:0,y:0});
-//     }
-//   }, [position, isDragging]);
-  const pendingStopRef = useRef(null);
+
   useEffect(() => {
     if (!isDragging) {
       setLocalPos(position);
     }
   }, [position, isDragging]);
+  const handleStart = () => {
+    setSelectedBlockIndex(index)
+    setIsDragging(true)
+  }
+
+
   const handleStop = (e,data) => {
     setIsDragging(false);
     if (!nodeRef.current) return;
@@ -51,23 +53,21 @@ export default function DraggableGroup({
     if (overBottom) y -= (bbox.y + y + bbox.height - svgHeight);
 
     const corrected = x !== data.x || y !== data.y;
+    setLocalPos({ x, y });
+
     if(!corrected){
         setIsCorrected(false);
-    onStop(e,data)
+        onStop(e,data)
     }
 
 else {
     setIsCorrected(true);
 
-    setLocalPos({ x: 0, y: 0 });
-    pendingStopRef.current = { e, data: { ...data, x: 0, y: 0 } };
+    setLocalPos({ x, y});
+    pendingStopRef.current = { e, x, y };
 }
   }
-  const handleStart = () => {
-    setSelectedBlockIndex(index)
-    console.log(index)
-    setIsDragging(true)
-  }
+
 
   const handleTransitionEnd = () => {
     if (pendingStopRef.current) {
@@ -84,10 +84,10 @@ else {
     <Draggable
       nodeRef={nodeRef}
       scale={zoom / 100}
-      position={position}      
+      position={localPos}      
       onStart={handleStart}
       onDrag={onDrag}
-      onStop={(e,data)=>{ handleStop(e,data)}}
+      onStop={handleStop}
       defaultClassName="draggable"
       defaultClassNameDragging="draggable-active"
       // bounds={bounds} 
@@ -101,7 +101,7 @@ else {
 
         style={{
             outline: isDragging ? '2px dashed #4caf50' : 'none',
-            transition: !isCorrected ? 'none' : 'transform 0.5s ease-in',
+            transition: !isCorrected ? 'none' : 'transform 0.3s ease',
           }}
       />
     </Draggable>

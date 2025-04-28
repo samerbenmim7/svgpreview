@@ -5,7 +5,7 @@ import { styles } from '../styles'
 import React, { useRef, useState, useEffect, useCallback,useLayoutEffect } from 'react'
 import DraggableGroup from '../Components/DraggableGroup'
 import {PX_PER_MM} from '../Utils/const.js'
-
+//TODO disable selection for placeholders
 export default function SvgCard({
     svgGroups,
     positions,
