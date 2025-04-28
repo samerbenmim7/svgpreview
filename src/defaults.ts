@@ -1,8 +1,76 @@
+// defaults.ts
 
+// --------- Types ---------
+export interface BlockConfig {
+  text: string;
+  widthInMillimeters: number;
+  fontSize: number;
+  fontName: string;
+  leftOffsetInMillimeters: number;
+  topOffsetInMillimeters: number;
+  multiline: boolean;
+  lineHeight: number;
+  rotation: number;
+  r: number;
+  g: number;
+  b: number;
+  alignment: string;
+}
 
-export const defaultBlocks = [
+export interface Block {
+  id: number;
+  name?: string;
+  changed?: boolean;
+  config: BlockConfig;
+}
+
+export interface Config {
+  name: string;
+  fontSizeDraw: number;
+  fontSizeOverlay: number;
+  posX: number;
+  posY: number;
+  servoAngleUp: number;
+  servoAngleHighUp: number;
+  servoAngleDown: number;
+  servoWaitTime: number;
+  printerSpeed: number;
+  myAlignType: string;
+  segmentLength: number;
+  angleThreshold: number;
+  charDist: number;
+  imperfectY: number;
+  imperfectX: number;
+  lineDist: number;
+  rotate: number;
+  offsetBorderX: number;
+  offsetBorderY: number;
+  offsetRightBorder: number;
+  paperWidth: number;
+  paperHeight: number;
+  heightTopStripe: number;
+  heightBottomStripe: number;
+  heightRightStripe: number;
+  heightLeftStripe: number;
+  backGroundImageName: string;
+  repeatShiftX: number;
+  repeatShiftY: number;
+  repeatX: number;
+  repeatY: number;
+  createPreviewImages: boolean;
+  creationCanceled: boolean;
+  creationIsRunning: boolean;
+  picBoxDokSizeX: number;
+  picBoxDokSizeY: number;
+  curFontIndex: number;
+  id: number;
+}
+
+// --------- Values ---------
+
+export const defaultBlocks: Block[] = [
   {
-    id: '5',
+    id: 5,
     name: 'title',
     changed: true,
     config: {
@@ -22,7 +90,7 @@ export const defaultBlocks = [
     },
   },
   {
-    id: '8',
+    id: 8,
     name: 'wunderpen',
     changed: true,
     config: {
@@ -42,7 +110,7 @@ export const defaultBlocks = [
     },
   },
   {
-    id: '2',
+    id: 2,
     changed: true,
     name: 'sender',
     config: {
@@ -62,7 +130,7 @@ export const defaultBlocks = [
     },
   },
   {
-    id: '3',
+    id: 3,
     changed: true,
     name: 'sender2',
     config: {
@@ -82,7 +150,7 @@ export const defaultBlocks = [
     },
   },
   {
-    id: '4',
+    id: 4,
     changed: true,
     name: 'date',
     config: {
@@ -102,7 +170,7 @@ export const defaultBlocks = [
     },
   },
   {
-    id: '1',
+    id: 1,
     changed: true,
     name: 'header',
     config: {
@@ -122,7 +190,7 @@ export const defaultBlocks = [
     },
   },
   {
-    id: '6',
+    id: 6,
     changed: true,
     name: 'content',
     config: {
@@ -142,7 +210,7 @@ export const defaultBlocks = [
     },
   },
   {
-    id: '7',
+    id: 7,
     changed: true,
     name: 'footer',
     config: {
@@ -161,52 +229,50 @@ export const defaultBlocks = [
       alignment: 'left',
     },
   },
-  
-]
+];
 
-  export const defaultBlocksMap = new Map(
-    defaultBlocks.map(block => [parseInt(block.id), block])
-  );
+export const defaultBlocksMap: Map<number, Block> = new Map(
+  defaultBlocks.map((block) => [block.id, block])
+);
 
-export const defaultConfig = {
-    name: 'Default',
-    fontSizeDraw: 10,
-    fontSizeOverlay: 60,
-    posX: 0,
-    posY: 0,
-    servoAngleUp: 60,
-    servoAngleHighUp: 50,
-    servoAngleDown: 80,
-    servoWaitTime: 80,
-    printerSpeed: 3000,
-    myAlignType: 'AlignLeft',
-    segmentLength: 0.5,
-    angleThreshold: (5.0 / 180.0) * 3.14159,
-    charDist: 0.0,
-    imperfectY: 0.5,
-    imperfectX: 2.0,
-    lineDist: 10.0,
-    rotate: 0,
-    offsetBorderX: 20,
-    offsetBorderY: 30,
-    offsetRightBorder: 10,
-    paperWidth: 210,
-    paperHeight: 297,
-    heightTopStripe: 2,
-    heightBottomStripe: 2,
-    heightRightStripe: 2,
-    heightLeftStripe: 2,
-    backGroundImageName: '',
-    repeatShiftX: 50,
-    repeatShiftY: 50,
-    repeatX: 0,
-    repeatY: 0,
-    createPreviewImages: true,
-    creationCanceled: false,
-    creationIsRunning: false,
-    picBoxDokSizeX: 0,
-    picBoxDokSizeY: 0,
-    curFontIndex: 0,
-    id: 25,
-  }
-  
+export const defaultConfig: Config = {
+  name: 'Default',
+  fontSizeDraw: 10,
+  fontSizeOverlay: 60,
+  posX: 0,
+  posY: 0,
+  servoAngleUp: 60,
+  servoAngleHighUp: 50,
+  servoAngleDown: 80,
+  servoWaitTime: 80,
+  printerSpeed: 3000,
+  myAlignType: 'AlignLeft',
+  segmentLength: 0.5,
+  angleThreshold: (5.0 / 180.0) * 3.14159,
+  charDist: 0.0,
+  imperfectY: 0.5,
+  imperfectX: 2.0,
+  lineDist: 10.0,
+  rotate: 0,
+  offsetBorderX: 20,
+  offsetBorderY: 30,
+  offsetRightBorder: 10,
+  paperWidth: 210,
+  paperHeight: 297,
+  heightTopStripe: 2,
+  heightBottomStripe: 2,
+  heightRightStripe: 2,
+  heightLeftStripe: 2,
+  backGroundImageName: '',
+  repeatShiftX: 50,
+  repeatShiftY: 50,
+  repeatX: 0,
+  repeatY: 0,
+  createPreviewImages: true,
+  creationCanceled: false,
+  creationIsRunning: false,
+  picBoxDokSizeX: 0,
+  picBoxDokSizeY: 0,
+  curFontIndex: 0,
+  id: 25,
+};
