@@ -276,3 +276,25 @@ export const defaultConfig: Config = {
   curFontIndex: 0,
   id: 25,
 };
+
+
+export const mockBlock:Block = {
+  id: 0,
+  name: 'new Block',
+  changed: true,
+  config: {
+    text: 'NEW BLOCK',
+    widthInMillimeters: 210,
+    fontSize: 7,
+    fontName: 'jessy',
+    leftOffsetInMillimeters: 10 ,
+    topOffsetInMillimeters: 10,
+    multiline: true,
+    lineHeight: 3,
+    rotation: 0,
+    r: 100,
+    g: 100,
+    b: 100,
+    alignment: 'left',
+  },
+}

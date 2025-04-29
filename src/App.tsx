@@ -1,54 +1,20 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ConfigForm from './ConfigForm';
-import { addWhiteBackgroundAndBordersToSVG, extractGId, buildBodyData } from './Utils/utils';
-import { post } from './services/api';
-import { defaultConfig, defaultBlocks, defaultBlocksMap } from './defaults';
-import SvgCard from './Components/SvgCard';
+import { addWhiteBackgroundAndBordersToSVG, extractGId, buildBodyData, deleteGroupFromSvgString, getRandom } from './utils/utils';
+import { post ,get} from './services/api';
+import { defaultConfig, defaultBlocks, defaultBlocksMap, mockBlock } from './defaults';
+import SvgCard from './components/svgCard/SvgCard';
 import './Configurator.css';
+import {Position,Placeholder,BlockConfig,Block} from './types/types'
+import { useDebounce } from './hooks/useDebounce';
+import { useCenterScroll } from './hooks/useCenterScroll';
+import { useSvgGroups } from './hooks/useSvgGroup';
+import { DEFAULT_FONT } from './Utils/const';
 
-// ---- Interfaces / Types ----
-
-interface Position {
-  x: number;
-  y: number;
-}
-
-interface Placeholder {
-  name: string;
-  value: string;
-}
-
-interface BlockConfig {
-  text: string;
-  widthInMillimeters: number;
-  fontSize: number;
-  fontName: string;
-  leftOffsetInMillimeters: number;
-  topOffsetInMillimeters: number;
-  topdragOffsetInMillimeters?: number;
-  leftdragOffsetInMillimeters?: number;
-  alignment: string;
-  multiline: boolean;
-  lineHeight: number;
-  rotation: number;
-  r: number;
-  g: number;
-  b: number;
-}
-
-interface Block {
-  id: number;
-  config: BlockConfig;
-  name?: string;
-  changed?: boolean;
-}
-
-// ---- Main App Component ----
 
 export default function App() {
   const [positions, setPositions] = useState<Record<number, Position>>({});
   const [svgData, setSvgData] = useState<string>('');
-  const [firstfetch, setFirstfetch] = useState<boolean>(true);
   const [parametersUrl, setParametersUrl] = useState<string>('');
   const [selectedConfigId, setSelectedConfigId] = useState<number>(25);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -57,37 +23,98 @@ export default function App() {
   const [paperHeight, setPaperHeight] = useState<number>(105);
   const [format, setFormat] = useState<string>('svg');
   const [config, setConfig] = useState<any>(defaultConfig);
-  const [configs, setConfigs] = useState<any[]>([]);
-  //
   const [blocks, setBlocks] = useState<Block[]>(defaultBlocks);
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
-  const [myMap, setMyMap] = useState<Map<number, string>>(new Map());
+  const [GroupIdentifierUrlMap, setGroupIdentifierUrlMap] = useState<Map<number, string>>(new Map());
   const [isTemplate, setIsTemplate] = useState<boolean>(true);
   const [align, setAlign] = useState<string>('left');
   const [size, setSize] = useState<string>('medium');
   const [svgGroups, setSvgGroups] = useState<Map<number, string>>(new Map());
   const [lastUpdatedBlockId, setLastUpdatedBlockId] = useState<string | null>(null);
-  const [blocksMap, setBlocksMap] = useState(defaultBlocksMap);
+  const [needsSync, setSync] = useState(true);
+  const [symbolCount, setSymbolCount] = useState(0);
+
+  const blockNextId = useRef(blocks.length+1); 
+
   const [placeholders, setPlaceholders] = useState<Placeholder[]>([
     { name: 'COMPANY', value: 'WunderPen' },
     { name: 'NAME1', value: 'Siva' },
     { name: 'SENDER', value: 'Samer Ben Mim,' },
   ]);
-  const cardRef = useRef<HTMLDivElement | null>(null);
 
+
+
+  useEffect(() => {
+    const fetchSprite = async () => {
+      try {
+        const { text } = await get('/icons/sprite.svg');
+        const div = document.createElement('div');
+        div.style.display = 'none';
+        div.innerHTML = text;
+        document.body.prepend(div);
+  
+        const svg = div.querySelector('svg');
+        const symbols = svg?.querySelectorAll('symbol') || [];
+        setSymbolCount(symbols.length);
+  
+      } catch (err) {
+        console.error('Failed to load preview:', err);
+      }
+    };
+  
+    fetchSprite();
+  }, []);
+  
+  
+    
+
+    function getBlockNextId() {
+      const id = blockNextId.current;
+      blockNextId.current += 1;
+      return id;
+    }
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const updateMapValue = (id: string, newValue: string) => {
-    setMyMap((prevMap) => {
+    setGroupIdentifierUrlMap((prevMap) => {
       const newMap = new Map(prevMap);
       newMap.set(parseInt(id, 10), newValue);
       return newMap;
     });
   };
 
-  const handleBlockChange = (e: React.ChangeEvent<HTMLInputElement> | null, text?: string) => {
+
+function mutateSilently(newBlocks) {
+  setBlocks(newBlocks);
+}
+  const handleDeleteBlock= (id =selectedBlockIndex )=>{
+    let newSelectedBlockId = 0;
+    const filteredBlocks  = blocks.filter(b=>b.id!=selectedBlockIndex)
+    newSelectedBlockId = filteredBlocks?.[0]?.id
+   mutateSilently(filteredBlocks.map(b=>({...b, changed:true})))
+    console.log(deleteGroupFromSvgString(svgData,id))
+   setSvgData(deleteGroupFromSvgString(svgData,id))
+   setSvgGroups(prev => {
+    const newMap = new Map(prev);
+    newMap.delete(id);
+    return newMap;
+  });
+   setSelectedBlockIndex(newSelectedBlockId)
+  }
+
+
+  const handleAddBlock= (text ="NEW TEXT", fontName = DEFAULT_FONT  )=>{
+    
+    const b = blocks.map(b=>({
+      ...b,changed:false
+    }))
+    setBlocks([...b,{...mockBlock, config:{...mockBlock.config, fontName,text  , topOffsetInMillimeters: getRandom(10,paperHeight-10), leftOffsetInMillimeters: getRandom(10,paperWidth-10)} , id : getBlockNextId()}])
+    setSync(true)
+  }
+  const handleBlockChange = (e: React.ChangeEvent<HTMLInputElement |HTMLTextAreaElement> | null, text?: string) => {
     let {
       name = null,
       value = null,
       type = null,
+      // @ts-ignore
       checked = null
     } = e?.target || {};
 
@@ -103,7 +130,7 @@ export default function App() {
         if (size === "large") value = "6";
       }
     }
-
+    setSync(true)
     setBlocks((prevBlocks) =>
       prevBlocks.map((block) => {
         if (block.id !== selectedBlockIndex) return { ...block, changed: false };
@@ -150,40 +177,22 @@ export default function App() {
     }
   }, [svgGroups, lastUpdatedBlockId]);
 
-  useEffect(() => {
-    if (containerRef.current) {
-      const scrollableDiv = containerRef.current;
-      const centerX = (scrollableDiv.scrollWidth - scrollableDiv.clientWidth) / 2;
-      const centerY = (scrollableDiv.scrollHeight - scrollableDiv.clientHeight) / 2;
-      scrollableDiv.scrollTo({ left: centerX, top: centerY, behavior: 'smooth' });
-    }
-  }, [svgData]);
+  useCenterScroll(containerRef, svgData);
 
   useEffect(() => {
-    if (myMap.size === 0) return;
+    if (GroupIdentifierUrlMap.size === 0) return;
 
-    const queryParams = [...myMap.entries()]
+    const queryParams = [...GroupIdentifierUrlMap.entries()]
       .map(([_, value]) => `${value}`)
       .join('&');
     setParametersUrl(queryParams);
-  }, [myMap]);
+  }, [GroupIdentifierUrlMap]);
 
-  useEffect(() => {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    setDebounceTimer(
-      setTimeout(() => {
-        handleSendRequest();
-      }, 150)
-    );
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-    };
-  }, [paperHeight, paperWidth]);
 
   const fetchSVG = useCallback(
-    async (inputText: string | undefined, regenrate = true) => {
-      if (!inputText) return;
+    async ( regenrate = true) => {
       try {
+        if(!svgData) regenrate=true
         const b = regenrate ? blocks : blocks.filter((b) => b.changed);
 
         const bodyData = buildBodyData({
@@ -203,9 +212,7 @@ export default function App() {
         setSvgData(
           addWhiteBackgroundAndBordersToSVG(
             text,
-            firstfetch,
             svgData,
-
           )
         );
 
@@ -216,7 +223,7 @@ export default function App() {
             const value = response.headers.get('X-Parameters-Url' + i);
             if (value) newMap.set(i, value);
           }
-          setMyMap(newMap);
+          setGroupIdentifierUrlMap(newMap);
         } else {
           for (let [header, value] of response.headers.entries()) {
             if (header.toLowerCase().startsWith('x-parameters-url')) {
@@ -231,7 +238,7 @@ export default function App() {
         setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>');
       }
     },
-    [blocks, selectedBlockIndex, paperWidth, paperHeight, format, selectedConfigId, firstfetch, config, svgData, blocksMap, isTemplate, placeholders]
+    [blocks, selectedBlockIndex, paperWidth, paperHeight, format, selectedConfigId, config, svgData, isTemplate, placeholders]
   );
 
   const handleSendRequest = useCallback(async () => {
@@ -253,7 +260,6 @@ export default function App() {
       setSvgData(
         addWhiteBackgroundAndBordersToSVG(
           text,
-          firstfetch,
           svgData,
         )
       );
@@ -265,7 +271,7 @@ export default function App() {
           const value = response.headers.get('X-Parameters-Url' + i);
           if (value) newMap.set(i, value);
         }
-        setMyMap(newMap);
+        setGroupIdentifierUrlMap(newMap);
       } else {
         for (let [header, value] of response.headers.entries()) {
           if (header.toLowerCase().startsWith('x-parameters-url')) {
@@ -277,47 +283,27 @@ export default function App() {
     } catch {
       setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>');
     }
-  }, [parametersUrl, blocks, paperWidth, paperHeight, format, selectedConfigId, firstfetch, config, svgData]);
+  }, [parametersUrl, blocks, paperWidth, paperHeight, format, selectedConfigId, config, svgData]);
 
   const handleGenerate = (regenrate = true) => {
-    setFirstfetch(false);
-    const val = blocks.find((b) => b.id === selectedBlockIndex)?.config.text;
-    fetchSVG(val, regenrate);
+    fetchSVG(regenrate);
   };
 
-  useEffect(() => {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    setDebounceTimer(
-      setTimeout(() => {
-        handleGenerate(false);
-      }, 150)
-    );
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-    };
-  }, [blocks, isTemplate, placeholders]);
-
-  useEffect(() => {
-    handleGenerate();
-  }, []);
-
-  useEffect(() => {
-    if (!svgData) return;
-    const splittedData = svgData.split('\n').slice(1, -1);
-    setSvgGroups((prev) => {
-      const updated = new Map(prev);
-      splittedData.forEach((block) => {
-        const id = extractGId(block);
-        if (id !== null) {
-          updated.set(id, block);
-        }
-      });
-      return updated;
-    });
-  }, [svgData]);
+  useDebounce(
+    () => {
+      if (needsSync) {
+        handleGenerate(false);   
+        setSync(false);          
+      }
+    },
+    150,
+    [needsSync, isTemplate, placeholders] 
+  );
+    useSvgGroups(svgData, svgGroups,setSvgGroups);
 
   return (
     <div style={{ display: 'flex', width: '100%' }}>
+
       <SvgCard
         svgGroups={svgGroups}
         setBlocks={setBlocks}
@@ -326,42 +312,80 @@ export default function App() {
         setSelectedBlockIndex={setSelectedBlockIndex}
         containerRef={containerRef}
         cardRef={cardRef}
+        setSync={setSync}
       />
+
       <button style={{ marginLeft: '10px', marginBottom: '5px', marginTop: '0px', padding: "10px" }} onClick={() => handleGenerate()}>
         Generate Different Preview
       </button>
+      <button style={{ marginLeft: '10px', marginBottom: '5px', marginTop: '0px', padding: "10px" }} onClick={() => handleDeleteBlock()}>
+        Delete Block
+      </button>
+      <button style={{ marginLeft: '10px', marginBottom: '5px', marginTop: '0px', padding: "10px" }} onClick={() => handleAddBlock()}>
+        Add Block
+      </button>
+
       <div style={{ width: '45%', margin: '20px 0' }}>
         <ConfigForm
           handleBlockChange={handleBlockChange}
-          selectedConfigId={selectedConfigId}
-          setSelectedConfigId={setSelectedConfigId}
-          generatePreview={() => {
-            const val = blocks.find((b) => b.id === selectedBlockIndex)?.config.text;
-            fetchSVG(val);
-          }}
           setPaperHeight={setPaperHeight}
           setPaperWidth={setPaperWidth}
           align={align}
           setAlign={setAlign}
-          configs={configs}
-          config={config}
-          setConfigs={setConfigs}
-          setConfig={setConfig}
-          defaultConfig={defaultConfig}
           blocks={blocks}
-          setBlocks={setBlocks}
           selectedBlockIndex={selectedBlockIndex}
-          setSvgData={setSvgData}
-          svgData={svgData}
           setSelectedBlockIndex={setSelectedBlockIndex}
-          setPlaceholders={setPlaceholders}
-          placeholders={placeholders}
-          setIsTemplate={setIsTemplate}
-          isTemplate={isTemplate}
           size={size}
           setSize={setSize}
         />
+
+<div style={{
+  height:"400px",
+  overflow:'scroll'
+}}>
+
+
+{Array.from({ length: symbolCount }, (_, index) => (
+  <Symbol key={index} id={index + 1} size={70}  handleAddBlock={handleAddBlock}/>
+))}
+</div>
+
       </div>
+                
+
+
     </div>
   );
 }
+
+function Symbol({ id, size = 48, className = '', handleAddBlock }) {
+  const symbolElement = document.getElementById(`sym-${id}`);
+
+  const vb = symbolElement
+    ?.getAttribute('viewBox')
+    ?.split(' ')
+    .map(Number) || [0, 0, 100, 100];
+
+  const [minX, minY, vbW, vbH] = vb;
+
+  const character = symbolElement?.getAttribute('data-caracter') || '';
+  const fontName = symbolElement?.getAttribute('data-category') || '';
+
+  return (
+    <svg
+      className={className}
+      style={{ cursor: 'pointer' }}
+      onClick={() => {
+        handleAddBlock(character,fontName); 
+      }}
+      width={size}
+      height={size}
+      viewBox={`${minX} ${minY} ${vbW} ${vbH}`}
+      preserveAspectRatio="xMidYMid meet"
+      aria-hidden="true"
+    >
+      <use href={`#sym-${id}`} />
+    </svg>
+  );
+}
+

@@ -12,14 +12,15 @@ const defaultHeaders = {
  * @param {string} endpoint - e.g. '/preview'
  * @param {object} headers - optional extra headers
  */
-export const get = async (endpoint, headers = {}) => {
+export const get = async (endpoint, headers = {}, isText= false) => {
   const response = await fetch(`${BASE_URL}${endpoint}`, {
     method: 'GET',
     headers: { ...defaultHeaders, ...headers },
   });
 
   if (!response.ok) throw new Error(`GET ${endpoint} failed`);
-  return response.json();
+  const text = await response.text(); // allow SVG or JSON response
+  return { text, response };
 };
 
 /**

@@ -1,4 +1,3 @@
-import parse, { HTMLReactParserOptions, Element, domToReact } from 'html-react-parser';
 
 interface ExtractResult {
   before: string;
@@ -46,7 +45,10 @@ interface BuildBodyDataParams {
 export function extractBeforeAfter(str: string, id: number): ExtractResult {
   const startTag = `<g id='${id}'`;
   const startIndex = str.indexOf(startTag);
-  if (startIndex === -1) return { before: '', after: '' };
+  if (startIndex === -1) {
+    // when we append new block the id does not exsists
+   const startIndex = str.indexOf('\n');
+    return { before: str.substring(0, startIndex), after: str.substring(startIndex) };}
   const before = str.substring(0, startIndex);
   const endIndex = str.indexOf('</g>', startIndex);
   if (endIndex === -1) return { before, after: '' };
@@ -69,24 +71,27 @@ export function extractGId(str: string): number | null {
 
 export function addWhiteBackgroundAndBordersToSVG(
   svgContent: string,
-  firstfetch: boolean,
   oldSvgData: string,
 ): string {
   let index = 0;
   let count = 0;
+
   while ((index = svgContent.indexOf("id='", index)) !== -1) {
     index++;
     count++;
     if (count > 1) return svgContent;
   }
-  firstfetch = true; // (this line has no effect outside the function because it's a copy)
-  if (!firstfetch) {
+  if (count==1) {
     const id = extractGId(svgContent);
+
     if (id !== null) {
       const { before, after } = extractBeforeAfter(oldSvgData, id);
-      svgContent = before + svgContent + after;
+
+
+      svgContent = before +"\n"+removeFirstAndLastLine(svgContent) + after;
     }
-  }
+  } 
+
   return svgContent;
 }
 
@@ -100,20 +105,7 @@ export function downloadFile(content: BlobPart, fileName: string, contentType: s
   URL.revokeObjectURL(url);
 }
 
-export const jsxElement = (svgString: string) =>
-  parse(svgString, {
-    replace(domNode) {
-      if ('attribs' in domNode && domNode.attribs) {
-        for (const [k, v] of Object.entries(domNode.attribs)) {
-          const camel = k.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-          if (camel !== k) {
-            domNode.attribs[camel] = v;
-            delete domNode.attribs[k];
-          }
-        }
-      }
-    },
-  } as HTMLReactParserOptions);
+
 
 export function pxToMm(px: number): number {
   const cssDPI = 96;
@@ -162,4 +154,21 @@ export function buildBodyData({
     }, {}),
     isTemplate,
   };
+}
+function removeFirstAndLastLine(text) {
+  const lines = text.split('\n');
+  lines.shift();    // remove first line
+  lines.pop();      // remove last line
+  return lines.join('\n');
+}
+
+
+export function deleteGroupFromSvgString(str,id){
+  const { before, after } = extractBeforeAfter(str, id);
+  return before + after
+
+}
+
+export function getRandom(min ,max) {
+   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
