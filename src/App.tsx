@@ -10,20 +10,22 @@ import { useDebounce } from './hooks/useDebounce';
 import { useCenterScroll } from './hooks/useCenterScroll';
 import { useSvgGroups } from './hooks/useSvgGroup';
 import { DEFAULT_FONT } from './Utils/const';
+import { useKeyboard } from './hooks/useKeyboard';
+import { useSpriteLoader } from './hooks/useSpriteLoader';
 
 
 export default function App() {
   const [positions, setPositions] = useState<Record<number, Position>>({});
   const [svgData, setSvgData] = useState<string>('');
   const [parametersUrl, setParametersUrl] = useState<string>('');
-  const [selectedConfigId, setSelectedConfigId] = useState<number>(25);
+  const [blocks, setBlocks] = useState<Block[]>(defaultBlocks);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number>(1);
   const [paperWidth, setPaperWidth] = useState<number>(210);
   const [paperHeight, setPaperHeight] = useState<number>(105);
+  const [selectedConfigId, setSelectedConfigId] = useState<number>(25);
   const [format, setFormat] = useState<string>('svg');
   const [config, setConfig] = useState<any>(defaultConfig);
-  const [blocks, setBlocks] = useState<Block[]>(defaultBlocks);
   const [GroupIdentifierUrlMap, setGroupIdentifierUrlMap] = useState<Map<number, string>>(new Map());
   const [isTemplate, setIsTemplate] = useState<boolean>(true);
   const [align, setAlign] = useState<string>('left');
@@ -31,7 +33,6 @@ export default function App() {
   const [svgGroups, setSvgGroups] = useState<Map<number, string>>(new Map());
   const [lastUpdatedBlockId, setLastUpdatedBlockId] = useState<string | null>(null);
   const [needsSync, setSync] = useState(true);
-  const [symbolCount, setSymbolCount] = useState(0);
 
   const blockNextId = useRef(blocks.length+1); 
 
@@ -42,29 +43,17 @@ export default function App() {
   ]);
 
 
+  const symbolCount = useSpriteLoader();
 
-  useEffect(() => {
-    const fetchSprite = async () => {
-      try {
-        const { text } = await get('/icons/sprite.svg');
-        const div = document.createElement('div');
-        div.style.display = 'none';
-        div.innerHTML = text;
-        document.body.prepend(div);
-  
-        const svg = div.querySelector('svg');
-        const symbols = svg?.querySelectorAll('symbol') || [];
-        setSymbolCount(symbols.length);
-  
-      } catch (err) {
-        console.error('Failed to load preview:', err);
-      }
-    };
-  
-    fetchSprite();
-  }, []);
+
+
   
   
+  useKeyboard("Backspace",() => {
+    if (selectedBlockIndex) {
+      handleDeleteBlock(selectedBlockIndex);
+    }
+  });
     
 
     function getBlockNextId() {
@@ -82,7 +71,7 @@ export default function App() {
   };
 
 
-function mutateSilently(newBlocks) {
+function mutateSilently(newBlocks : Block[]) {
   setBlocks(newBlocks);
 }
   const handleDeleteBlock= (id =selectedBlockIndex )=>{
@@ -190,10 +179,10 @@ function mutateSilently(newBlocks) {
 
 
   const fetchSVG = useCallback(
-    async ( regenrate = true) => {
+    async ( regenrateAll = true) => {
       try {
-        if(!svgData) regenrate=true
-        const b = regenrate ? blocks : blocks.filter((b) => b.changed);
+        if(!svgData) regenrateAll=true
+        const b = regenrateAll ? blocks : blocks.filter((b) => b.changed);
 
         const bodyData = buildBodyData({
           blocks: b,
@@ -285,8 +274,8 @@ function mutateSilently(newBlocks) {
     }
   }, [parametersUrl, blocks, paperWidth, paperHeight, format, selectedConfigId, config, svgData]);
 
-  const handleGenerate = (regenrate = true) => {
-    fetchSVG(regenrate);
+  const handleGenerate = (regenrateAll = true, samePreview = false) => {
+    fetchSVG(regenrateAll);
   };
 
   useDebounce(
