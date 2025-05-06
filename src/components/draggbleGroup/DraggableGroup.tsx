@@ -1,5 +1,11 @@
-import React, { useRef, useState, useEffect } from 'react';
-import Draggable, { DraggableEvent, DraggableData } from 'react-draggable';
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  HTMLAttributes,
+  useCallback,
+} from "react";
+import Draggable, { DraggableEvent, DraggableData } from "react-draggable";
 
 // --- Types ---
 interface DraggableGroupProps {
@@ -10,6 +16,13 @@ interface DraggableGroupProps {
   onStop: (e: DraggableEvent, data: DraggableData) => void;
   index: number;
   setSelectedBlockIndex: (index: number) => void;
+  pushHistory: any;
+  selectedBlockIndex;
+  isHovered;
+  setIsHovered;
+  setToolbarPos;
+  setIsCurrentlyDragging;
+  setLastHovered;
 }
 
 // --- Component ---
@@ -20,13 +33,24 @@ export default function DraggableGroup({
   onDrag,
   onStop,
   index,
-  setSelectedBlockIndex
+  setSelectedBlockIndex,
+  pushHistory,
+  selectedBlockIndex,
+  setIsHovered,
+  isHovered,
+  setToolbarPos,
+  setIsCurrentlyDragging,
+  setLastHovered,
 }: DraggableGroupProps) {
   const [isCorrected, setIsCorrected] = useState(false);
   const [localPos, setLocalPos] = useState(position);
   const nodeRef = useRef<Element | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const pendingStopRef = useRef<{ e: DraggableEvent; data: DraggableData } | null>(null);
+
+  const pendingStopRef = useRef<{
+    e: DraggableEvent;
+    data: DraggableData;
+  } | null>(null);
 
   useEffect(() => {
     if (!isDragging) {
@@ -34,8 +58,18 @@ export default function DraggableGroup({
     }
   }, [position, isDragging]);
 
+  const updateToolbarPosition = useCallback(() => {
+    if (!nodeRef.current) return;
+    // @ts-ignore
+
+    const bbox = nodeRef.current.getBBox();
+
+    setToolbarPos({ x: bbox.x + bbox.width - 28, y: bbox.y - 15 });
+  }, []);
+
   const handleStop = (e: DraggableEvent, data: DraggableData) => {
-    setIsDragging(false);
+    setIsCurrentlyDragging(false);
+
     if (!nodeRef.current) return;
     const bbox = (nodeRef.current as SVGGraphicsElement).getBBox();
     const svg = (nodeRef.current as SVGGraphicsElement).ownerSVGElement;
@@ -51,10 +85,10 @@ export default function DraggableGroup({
     const overTop = bbox.y + y < 0;
     const overBottom = bbox.y + y + bbox.height > svgHeight;
 
-    if (overRight) x -= (bbox.x + x + bbox.width - svgWidth);
-    if (overLeft) x -= (bbox.x + x);
-    if (overTop) y -= (bbox.y + y);
-    if (overBottom) y -= (bbox.y + y + bbox.height - svgHeight);
+    if (overRight) x -= bbox.x + x + bbox.width - svgWidth;
+    if (overLeft) x -= bbox.x + x;
+    if (overTop) y -= bbox.y + y;
+    if (overBottom) y -= bbox.y + y + bbox.height - svgHeight;
 
     const corrected = x !== data.x || y !== data.y;
     if (!corrected) {
@@ -66,11 +100,19 @@ export default function DraggableGroup({
       pendingStopRef.current = { e, data: { ...data, x: 0, y: 0 } };
     }
   };
-
-  const handleStart = () => {
+  const handleMouseEnter = () => {
+    setIsHovered(index);
     setSelectedBlockIndex(index);
-    console.log(index);
+    setLastHovered(index);
+  };
+  const handleMouseLeave = () => setIsHovered(-1);
+  const handleStart = () => {
+    pushHistory();
+
+    // setIsHovered(false);
+    setSelectedBlockIndex(index);
     setIsDragging(true);
+    setIsCurrentlyDragging(true);
   };
 
   const handleTransitionEnd = () => {
@@ -81,27 +123,42 @@ export default function DraggableGroup({
       setIsCorrected(false);
     }
   };
+  useEffect(() => {
+    if (isHovered == index) {
+      updateToolbarPosition();
+    }
+  }, [
+    isHovered,
+    zoom,
+    updateToolbarPosition,
+    JSON.stringify([isDragging, position]),
+  ]);
+
   return (
-    <Draggable
-      nodeRef={nodeRef as React.RefObject<HTMLElement>}
-      scale={zoom / 100}
-      position={position}
-      onStart={handleStart}
-      onDrag={onDrag}
-      onStop={handleStop}
-      defaultClassName="draggable"
-      defaultClassNameDragging="draggable-active"
-    >
-      <g
-        ref={nodeRef as React.RefObject<SVGGraphicsElement>}
-        pointerEvents="bounding-box"
-        dangerouslySetInnerHTML={{ __html: svgString }}
-        onTransitionEnd={handleTransitionEnd}
-        style={{
-          outline: isDragging ? '2px dashed #4caf50' : 'none',
-          transition: !isCorrected ? 'none' : 'transform 0.5s ease-in',
-        }}
-      />
-    </Draggable>
+    <>
+      <Draggable
+        nodeRef={nodeRef as React.RefObject<HTMLElement>}
+        scale={zoom / 100}
+        position={position}
+        onStart={handleStart}
+        onDrag={onDrag}
+        onStop={handleStop}
+        defaultClassName="draggable"
+        defaultClassNameDragging="draggable-active"
+      >
+        <g
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          ref={nodeRef as React.RefObject<SVGGraphicsElement>}
+          pointerEvents="bounding-box"
+          dangerouslySetInnerHTML={{ __html: svgString }}
+          onTransitionEnd={handleTransitionEnd}
+          style={{
+            outline: isHovered == index ? "2px dashed blue" : "none",
+            transition: !isCorrected ? "none" : "transform 0.5s ease-in",
+          }}
+        />
+      </Draggable>
+    </>
   );
 }

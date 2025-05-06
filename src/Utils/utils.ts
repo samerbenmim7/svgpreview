@@ -1,4 +1,3 @@
-
 interface ExtractResult {
   before: string;
   after: string;
@@ -47,19 +46,23 @@ export function extractBeforeAfter(str: string, id: number): ExtractResult {
   const startIndex = str.indexOf(startTag);
   if (startIndex === -1) {
     // when we append new block the id does not exsists
-   const startIndex = str.indexOf('\n');
-    return { before: str.substring(0, startIndex), after: str.substring(startIndex) };}
+    const startIndex = str.indexOf("\n");
+    return {
+      before: str.substring(0, startIndex),
+      after: str.substring(startIndex),
+    };
+  }
   const before = str.substring(0, startIndex);
-  const endIndex = str.indexOf('</g>', startIndex);
-  if (endIndex === -1) return { before, after: '' };
+  const endIndex = str.indexOf("</g>", startIndex);
+  if (endIndex === -1) return { before, after: "" };
   const after = str.substring(endIndex + 4);
   return { before, after };
 }
 
 export function extractGId(str: string): number | null {
-  const gIndex = str.indexOf('<g');
+  const gIndex = str.indexOf("<g");
   if (gIndex === -1) return null;
-  const idIndex = str.indexOf('id=', gIndex);
+  const idIndex = str.indexOf("id=", gIndex);
   if (idIndex === -1) return null;
   const quoteChar = str.charAt(idIndex + 3);
   if (quoteChar !== '"' && quoteChar !== "'") return null;
@@ -71,7 +74,7 @@ export function extractGId(str: string): number | null {
 
 export function addWhiteBackgroundAndBordersToSVG(
   svgContent: string,
-  oldSvgData: string,
+  oldSvgData: string
 ): string {
   let index = 0;
   let count = 0;
@@ -81,31 +84,32 @@ export function addWhiteBackgroundAndBordersToSVG(
     count++;
     if (count > 1) return svgContent;
   }
-  if (count==1) {
+  if (count == 1) {
     const id = extractGId(svgContent);
 
     if (id !== null) {
       const { before, after } = extractBeforeAfter(oldSvgData, id);
 
-
-      svgContent = before +"\n"+removeFirstAndLastLine(svgContent) + after;
+      svgContent = before + "\n" + removeFirstAndLastLine(svgContent) + after;
     }
-  } 
+  }
 
   return svgContent;
 }
 
-export function downloadFile(content: BlobPart, fileName: string, contentType: string): void {
+export function downloadFile(
+  content: BlobPart,
+  fileName: string,
+  contentType: string
+): void {
   const blob = new Blob([content], { type: contentType });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = fileName;
   a.click();
   URL.revokeObjectURL(url);
 }
-
-
 
 export function pxToMm(px: number): number {
   const cssDPI = 96;
@@ -146,29 +150,30 @@ export function buildBodyData({
       format,
     },
     configId: selectedConfigId,
-    placeholdersValues: placeholders.reduce<Record<string, string>>((acc, ph) => {
-      if (ph.name) {
-        acc[ph.name] = ph.value;
-      }
-      return acc;
-    }, {}),
+    placeholdersValues: placeholders.reduce<Record<string, string>>(
+      (acc, ph) => {
+        if (ph.name) {
+          acc[ph.name] = ph.value;
+        }
+        return acc;
+      },
+      {}
+    ),
     isTemplate,
   };
 }
 function removeFirstAndLastLine(text) {
-  const lines = text.split('\n');
-  lines.shift();    // remove first line
-  lines.pop();      // remove last line
-  return lines.join('\n');
+  const lines = text.split("\n");
+  lines.shift(); // remove first line
+  lines.pop(); // remove last line
+  return lines.join("\n");
 }
 
-
-export function deleteGroupFromSvgString(str,id){
+export function deleteGroupFromSvgString(str, id) {
   const { before, after } = extractBeforeAfter(str, id);
-  return before + after
-
+  return before + after;
 }
 
-export function getRandom(min ,max) {
-   return Math.floor(Math.random() * (max - min + 1)) + min;
+export function getRandom(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }

@@ -1,0 +1,35 @@
+/* styles.css or module.css */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+.playingBorder {
+  stroke: #4caf50;
+  stroke-width: 2;
+  stroke-dasharray: 5, 5;
+  stroke-dashoffset: 0;
+  animation: dash 1s linear infinite;
+}
+@keyframes marching {
+  100% {
+    border-image-slice: 1;
+    border-image-width: 1;
+    border-image-source: linear-gradient(
+      to right,
+      #4caf50 33%,
+      transparent 33%
+    );
+    border-image-outset: 0;
+    border-image-repeat: repeat;
+    border-image: linear-gradient(
+        90deg,
+        #4caf50 0%,
+        transparent 50%,
+        #4caf50 100%
+      )
+      1;
+    background-position: 100% 0;
+  }
+}

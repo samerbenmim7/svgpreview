@@ -14,11 +14,13 @@
     "html-react-parser": "^5.2.3",
     "interactjs": "^1.10.27",
     "react": "^19.1.0",
+    "react-angle-picker": "^1.0.8",
     "react-dom": "^19.1.0",
     "react-draggable": "^4.4.6",
     "react-feather": "^2.0.10",
     "react-icons": "^5.5.0",
-    "react-moveable": "^0.56.0"
+    "react-moveable": "^0.56.0",
+    "swiper": "^11.2.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
@@ -31,6 +33,7 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.18",
     "globals": "^15.14.0",
+    "prettier": "3.5.3",
     "vite": "^6.1.0"
   }
 }

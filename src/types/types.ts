@@ -34,3 +34,22 @@ export interface Block {
   name?: string;
   changed?: boolean;
 }
+
+export type Snapshot = {
+  positions: Record<number, Position>;
+  blocks: Block[];
+  svgGroups: Map<number, string>;
+  svgData: string;
+  parametersUrl: string;
+  selectedBlockIndex: number;
+  paperWidth: number;
+  paperHeight: number;
+  selectedConfigId: number;
+  format: string;
+  config: any;
+  GroupIdentifierUrlMap: Map<number, string>;
+  isTemplate: boolean;
+  align: string;
+  size: string;
+  lastUpdatedBlockId: string | null;
+};

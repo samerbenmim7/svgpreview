@@ -1,20 +1,31 @@
-import React, { useRef, useState, useEffect } from 'react';
-import styles from './svgCard.module.css';
-import DraggableGroup from '../draggbleGroup/DraggableGroup';
-import { PX_PER_MM } from '../../Utils/const';
+import React, { useRef, useState, useEffect, HTMLAttributes } from "react";
+import styles from "./svgCard.module.css";
+import DraggableGroup from "../draggbleGroup/DraggableGroup";
+import { PX_PER_MM } from "../../Utils/const";
 
-import {Position} from '../../types/types'
-
+import { Position } from "../../types/types";
+import { BlockToolbar } from "../helpers/blockToolBar/BlockToolbar.tsx";
 
 interface SvgCardProps {
   svgGroups: Map<number, string>;
   positions: Record<number, Position>;
   setSelectedBlockIndex: (index: number) => void;
-  containerRef: React.RefObject<HTMLDivElement| null> ;
-  cardRef: React.RefObject<HTMLDivElement| null>  ;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  cardRef: React.RefObject<HTMLDivElement | null>;
   setPositions: React.Dispatch<React.SetStateAction<Record<number, Position>>>;
-  setBlocks: React.Dispatch<any>;  // (you can improve this if you have a proper Block[] type)
-  setSync:React.Dispatch<any>;
+  setBlocks: React.Dispatch<any>;
+  setSync: React.Dispatch<any>;
+  pushHistory: any;
+  zoom: number;
+  pageWidth;
+  pageHeight;
+  isFlipped: boolean;
+  undo: any;
+  redo: any;
+  selectedBlockIndex;
+  handleBlockChange;
+  blocks;
+  backgroundImage;
 }
 
 // --- Component ---
@@ -22,28 +33,42 @@ export default function SvgCard({
   svgGroups,
   positions,
   setSelectedBlockIndex,
+  selectedBlockIndex,
   containerRef,
   cardRef,
   setPositions,
   setBlocks,
-  setSync
+  setSync,
+  pushHistory,
+  zoom,
+  pageWidth,
+  pageHeight,
+  isFlipped,
+  handleBlockChange,
+  blocks,
+  backgroundImage,
 }: SvgCardProps) {
-
-
-  const [zoom, setZoom] = useState<number>(27);
-  const [isFlipped, setIsFlipped] = useState<boolean>(false);
-
   const currentTilt = useRef({ x: 0, y: 0 });
   const targetTilt = useRef({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(-1);
+  const [lastHovered, setLastHovered] = useState(-1);
 
+  const [isCurrentlyDragging, setIsCurrentlyDragging] = useState(false);
+
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
   const maxTilt = 12;
   const perspective = 1500;
   const scale = 1.01;
   const speed = 0.05;
 
   const animateTilt = () => {
-    currentTilt.current.x += (targetTilt.current.x - currentTilt.current.x) * speed;
-    currentTilt.current.y += (targetTilt.current.y - currentTilt.current.y) * speed;
+    currentTilt.current.x +=
+      (targetTilt.current.x - currentTilt.current.x) * speed;
+    currentTilt.current.y +=
+      (targetTilt.current.y - currentTilt.current.y) * speed;
 
     if (cardRef?.current) {
       cardRef.current.style.transform = `
@@ -78,8 +103,12 @@ export default function SvgCard({
   useEffect(() => {
     requestAnimationFrame(animateTilt);
   }, []);
-
-  const handleDragEnd = (_: any, data: { x: number; y: number }, id: number) => {
+  useEffect(() => {}, [toolbarPos]);
+  const handleDragEnd = (
+    _: any,
+    data: { x: number; y: number },
+    id: number
+  ) => {
     const newPos = {
       x: (positions[id]?.x || 0) + data.x,
       y: (positions[id]?.y || 0) + data.y,
@@ -92,7 +121,7 @@ export default function SvgCard({
       ...prev,
       [id]: newPos,
     }));
-    setSync(true)
+    setSync(true);
     setBlocks((prevBlocks: any[]) =>
       prevBlocks.map((block) => {
         if (block.id !== id) return { ...block, changed: false };
@@ -108,59 +137,123 @@ export default function SvgCard({
       })
     );
   };
-
   return (
-    <div className={styles.container}>
-      <div className={styles.header} />
-
-      <div className={styles.svgContainer} ref={containerRef}>
+    <>
+      <div
+        style={{
+          position: "absolute",
+          top: (toolbarPos.y / 100) * zoom,
+          left: (toolbarPos.x / 100) * zoom,
+          pointerEvents: "auto",
+          width: "100px",
+          height: "100px",
+          zIndex: 999,
+        }}
+      >
+        <BlockToolbar
+          visible={isHovered != -1 && !isCurrentlyDragging}
+          onMouseEnter={() => setIsHovered(lastHovered)}
+          onMouseLeave={() => setIsHovered(-1)}
+          fontSize={18}
+          handleBlockChange={handleBlockChange}
+          block={blocks.find((b) => b.id == selectedBlockIndex)}
+          onFontSizeChange={function (size: number): void {
+            throw new Error("Function not implemented.");
+          }}
+        />
+      </div>
+      {/* <div className={styles.svgContainer} ref={containerRef}> */}
+      <div
+        style={{
+          transform: `scale(${zoom / 100})`,
+          transformOrigin: "right",
+          transformBox: "fill-box",
+          transition: "transform 0.6s",
+        }}
+      >
         <div
+          ref={containerRef}
           style={{
-            alignSelf: 'baseline',
-            transform: `${isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'} scale(${zoom / 100})`,
-            transformOrigin: 'center center',
-            transition: 'transform .6s',
+            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+            transformOrigin: "center",
+            transition: "transform 0.6s",
           }}
           onMouseMove={handleMouseMove}
         >
+          {/* <div
+        ref={containerRef}
+        style={{
+          transform: `${isFlipped ? "rotateY(180deg)" : "rotateY(0deg)"}  scale(${zoom / 100})`,
+          transformOrigin: "right",
+          transformBox: "fill-box",
+          transition: "transform .6s",
+        }}
+        onMouseMove={handleMouseMove}
+      > */}
           <div
             ref={cardRef}
             style={{
-              boxShadow: '0 10px 16px #bbb',
+              boxShadow: "0 10px 16px #bbb",
               border: "1px solid #ddd",
-              borderRadius: '10px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.15)',
-              color: 'white',
-              position: 'relative',
-              willChange: 'transform',
-              cursor: 'pointer'
+              borderRadius: "10px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              background: "rgba(255, 255, 255, 0.15)",
+              color: "white",
+              position: "relative",
+              willChange: "transform",
+              cursor: "pointer",
+              backgroundSize: "100% 100%", // 👈 stretches to fill the box exactly
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+              backgroundImage: `url("${backgroundImage}")`,
             }}
           >
-            <svg id="svgPrev" xmlns="http://www.w3.org/2000/svg" width="2480.315" height="1240.1575">
-              <rect x="0" y="0" width="100%" height="100%" fill="white"></rect>
+            <svg
+              id="svgPrev"
+              xmlns="http://www.w3.org/2000/svg"
+              height={pageHeight * PX_PER_MM}
+              width={pageWidth * PX_PER_MM}
+            >
+              <rect
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                fill={backgroundImage ? "transparent" : "white"}
+              ></rect>
 
-              {Array.from(svgGroups).map(([key, value]) => {
-                const position = positions[key] || { x: 0, y: 0 };
-                return (
-                  <DraggableGroup
-                    key={key}
-                    index={key}
-                    svgString={value}
-                    zoom={zoom}
-                    onStop={(e, data) => handleDragEnd(e, data, key)}
-                    position={position}
-                    setSelectedBlockIndex={setSelectedBlockIndex}
-                  />
-                );
-              })}
+              {Array.from(svgGroups)
+                .sort((a, b) => b[1].length - a[1].length)
+                .map(([key, value]) => {
+                  const position = positions[key] || { x: 0, y: 0 };
+                  return (
+                    <DraggableGroup
+                      key={key}
+                      index={key}
+                      svgString={value}
+                      zoom={zoom}
+                      onStop={(e, data) => handleDragEnd(e, data, key)}
+                      pushHistory={pushHistory}
+                      position={position}
+                      setSelectedBlockIndex={setSelectedBlockIndex}
+                      selectedBlockIndex={selectedBlockIndex}
+                      isHovered={isHovered}
+                      setIsHovered={setIsHovered}
+                      setLastHovered={setLastHovered}
+                      setToolbarPos={setToolbarPos}
+                      setIsCurrentlyDragging={setIsCurrentlyDragging}
+                    />
+                  );
+                })}
             </svg>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* </div> */}
+    </>
   );
 }

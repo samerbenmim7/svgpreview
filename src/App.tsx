@@ -1,67 +1,177 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import ConfigForm from './ConfigForm';
-import { addWhiteBackgroundAndBordersToSVG, extractGId, buildBodyData, deleteGroupFromSvgString, getRandom } from './utils/utils';
-import { post ,get} from './services/api';
-import { defaultConfig, defaultBlocks, defaultBlocksMap, mockBlock } from './defaults';
-import SvgCard from './components/svgCard/SvgCard';
-import './Configurator.css';
-import {Position,Placeholder,BlockConfig,Block} from './types/types'
-import { useDebounce } from './hooks/useDebounce';
-import { useCenterScroll } from './hooks/useCenterScroll';
-import { useSvgGroups } from './hooks/useSvgGroup';
-import { DEFAULT_FONT } from './Utils/const';
-import { useKeyboard } from './hooks/useKeyboard';
-import { useSpriteLoader } from './hooks/useSpriteLoader';
-
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  HTMLAttributes,
+} from "react";
+import ConfigForm from "./ConfigForm";
+import {
+  addWhiteBackgroundAndBordersToSVG,
+  extractGId,
+  buildBodyData,
+  deleteGroupFromSvgString,
+  getRandom,
+} from "./utils/utils";
+import { post, get } from "./services/api";
+import { defaultConfig, defaultBlocks, mockBlock } from "./defaults";
+import SvgCard from "./components/svgCard/SvgCard";
+import "./Configurator.css";
+import {
+  Position,
+  Placeholder,
+  BlockConfig,
+  Block,
+  Snapshot,
+} from "./types/types";
+import { useDebounce } from "./hooks/useDebounce";
+import { useCenterScroll } from "./hooks/useCenterScroll";
+import { useSvgGroups } from "./hooks/useSvgGroup";
+import { DEFAULT_FONT, PX_PER_MM } from "./Utils/const";
+import { useKeyboard } from "./hooks/useKeyboard";
+import { useSpriteLoader } from "./hooks/useSpriteLoader";
+import TextSettingsCard from "./components/MenuViews/blocksConfigurator/BlocksConfigurator";
+import Button from "./components/atoms/button/Button";
+import { Columns } from "react-feather";
 
 export default function App() {
+  // Refs
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const blockNextId = useRef(defaultBlocks.length + 1);
+  const [zoom, setZoom] = useState<number>(32);
+
+  // State declarations
   const [positions, setPositions] = useState<Record<number, Position>>({});
-  const [svgData, setSvgData] = useState<string>('');
-  const [parametersUrl, setParametersUrl] = useState<string>('');
+  const [svgData, setSvgData] = useState<string>("");
+  const [backgroundImage, setBackgroundImage] = useState<string>("");
+  const [parametersUrl, setParametersUrl] = useState<string>("");
   const [blocks, setBlocks] = useState<Block[]>(defaultBlocks);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number>(1);
-  const [paperWidth, setPaperWidth] = useState<number>(210);
+  const [paperWidth, setPaperWidth] = useState<number>(50);
   const [paperHeight, setPaperHeight] = useState<number>(105);
   const [selectedConfigId, setSelectedConfigId] = useState<number>(25);
-  const [format, setFormat] = useState<string>('svg');
+  const [format, setFormat] = useState<string>("svg");
   const [config, setConfig] = useState<any>(defaultConfig);
-  const [GroupIdentifierUrlMap, setGroupIdentifierUrlMap] = useState<Map<number, string>>(new Map());
   const [isTemplate, setIsTemplate] = useState<boolean>(true);
-  const [align, setAlign] = useState<string>('left');
-  const [size, setSize] = useState<string>('medium');
+  const [align, setAlign] = useState<string>("left");
+  const [size, setSize] = useState<string>("medium");
   const [svgGroups, setSvgGroups] = useState<Map<number, string>>(new Map());
-  const [lastUpdatedBlockId, setLastUpdatedBlockId] = useState<string | null>(null);
   const [needsSync, setSync] = useState(true);
-
-  const blockNextId = useRef(blocks.length+1); 
-
+  const [history, setHistory] = useState<Snapshot[]>([]);
+  const [future, setFuture] = useState<Snapshot[]>([]);
+  const [GroupIdentifierUrlMap, setGroupIdentifierUrlMap] = useState<
+    Map<number, string>
+  >(new Map());
+  const [lastUpdatedBlockId, setLastUpdatedBlockId] = useState<string | null>(
+    null
+  );
+  const [isFlipped, setIsFlipped] = useState<boolean>(false);
   const [placeholders, setPlaceholders] = useState<Placeholder[]>([
-    { name: 'COMPANY', value: 'WunderPen' },
-    { name: 'NAME1', value: 'Siva' },
-    { name: 'SENDER', value: 'Samer Ben Mim,' },
+    { name: "COMPANY", value: "WunderPen" },
+    { name: "NAME1", value: "Siva" },
+    { name: "SENDER", value: "Samer Ben Mim," },
   ]);
 
+  // Custom hooks
+  useCenterScroll(containerRef, svgData);
+  useDebounce(
+    () => {
+      if (needsSync) {
+        handleGenerate(false);
+        setSync(false);
+      }
+    },
+    150,
+    [needsSync, isTemplate, placeholders]
+  );
+  useSvgGroups(svgData, svgGroups, setSvgGroups);
+  useKeyboard(
+    "Backspace",
+    () => {
+      if (selectedBlockIndex) {
+        handleDeleteBlock(selectedBlockIndex);
+      }
+    },
+    { ctrl: true }
+  );
+  useKeyboard(
+    "z",
+    () => {
+      undo();
+    },
+    { ctrl: true }
+  );
+  useKeyboard(
+    "y",
+    () => {
+      redo();
+    },
+    { ctrl: true }
+  );
 
-  const symbolCount = useSpriteLoader();
+  const undo = () => {
+    if (history.length === 0) return;
+    const last = history[history.length - 1];
+    setFuture((f) => [getSnapshot(), ...f]);
+    setHistory((h) => h.slice(0, -1));
+    restoreSnapshot(last);
+  };
 
+  const redo = () => {
+    if (future.length === 0) return;
+    const next = future[0];
+    setHistory((h) => [...h, getSnapshot()]);
+    setFuture((f) => f.slice(1));
+    restoreSnapshot(next);
+  };
 
-
-  
-  
-  useKeyboard("Backspace",() => {
-    if (selectedBlockIndex) {
-      handleDeleteBlock(selectedBlockIndex);
-    }
+  const getSnapshot = (): Snapshot => ({
+    positions,
+    blocks,
+    svgGroups,
+    svgData,
+    parametersUrl,
+    selectedBlockIndex,
+    paperWidth,
+    paperHeight,
+    selectedConfigId,
+    format,
+    config,
+    GroupIdentifierUrlMap,
+    isTemplate,
+    align,
+    size,
+    lastUpdatedBlockId,
   });
-    
 
-    function getBlockNextId() {
-      const id = blockNextId.current;
-      blockNextId.current += 1;
-      return id;
-    }
-  const cardRef = useRef<HTMLDivElement | null>(null);
+  const restoreSnapshot = (snap: Snapshot) => {
+    setPositions(snap.positions);
+    setBlocks(snap.blocks);
+    setSvgGroups(snap.svgGroups);
+    setSvgData(snap.svgData);
+    setParametersUrl(snap.parametersUrl);
+    setSelectedBlockIndex(snap.selectedBlockIndex);
+    setPaperWidth(snap.paperWidth);
+    setPaperHeight(snap.paperHeight);
+    setSelectedConfigId(snap.selectedConfigId);
+    setFormat(snap.format);
+    setConfig(snap.config);
+    setGroupIdentifierUrlMap(snap.GroupIdentifierUrlMap);
+    setIsTemplate(snap.isTemplate);
+    setAlign(snap.align);
+    setSize(snap.size);
+    setLastUpdatedBlockId(snap.lastUpdatedBlockId);
+  };
+  const pushHistory = () => {
+    setHistory((prev) => [...prev.slice(-9), getSnapshot()]);
+    setFuture([]);
+  };
+  function getBlockNextId() {
+    const id = blockNextId.current;
+    blockNextId.current += 1;
+    return id;
+  }
   const updateMapValue = (id: string, newValue: string) => {
     setGroupIdentifierUrlMap((prevMap) => {
       const newMap = new Map(prevMap);
@@ -70,76 +180,106 @@ export default function App() {
     });
   };
 
-
-function mutateSilently(newBlocks : Block[]) {
-  setBlocks(newBlocks);
-}
-  const handleDeleteBlock= (id =selectedBlockIndex )=>{
+  function mutateSilently(newBlocks: Block[]) {
+    setBlocks(newBlocks);
+  }
+  const handleDeleteBlock = (id = selectedBlockIndex) => {
+    pushHistory();
     let newSelectedBlockId = 0;
-    const filteredBlocks  = blocks.filter(b=>b.id!=selectedBlockIndex)
-    newSelectedBlockId = filteredBlocks?.[0]?.id
-   mutateSilently(filteredBlocks.map(b=>({...b, changed:true})))
-    console.log(deleteGroupFromSvgString(svgData,id))
-   setSvgData(deleteGroupFromSvgString(svgData,id))
-   setSvgGroups(prev => {
-    const newMap = new Map(prev);
-    newMap.delete(id);
-    return newMap;
-  });
-   setSelectedBlockIndex(newSelectedBlockId)
-  }
+    const filteredBlocks = blocks.filter((b) => b.id != selectedBlockIndex);
+    newSelectedBlockId = filteredBlocks?.[0]?.id;
+    mutateSilently(filteredBlocks.map((b) => ({ ...b, changed: true })));
+    setSvgData(deleteGroupFromSvgString(svgData, id));
+    setSvgGroups((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(id);
+      return newMap;
+    });
+    setSelectedBlockIndex(newSelectedBlockId);
+  };
 
-
-  const handleAddBlock= (text ="NEW TEXT", fontName = DEFAULT_FONT  )=>{
-    
-    const b = blocks.map(b=>({
-      ...b,changed:false
-    }))
-    setBlocks([...b,{...mockBlock, config:{...mockBlock.config, fontName,text  , topOffsetInMillimeters: getRandom(10,paperHeight-10), leftOffsetInMillimeters: getRandom(10,paperWidth-10)} , id : getBlockNextId()}])
-    setSync(true)
-  }
-  const handleBlockChange = (e: React.ChangeEvent<HTMLInputElement |HTMLTextAreaElement> | null, text?: string) => {
+  const handleAddBlock = (text = "NEW TEXT", fontName = DEFAULT_FONT) => {
+    const blockId = getBlockNextId();
+    pushHistory();
+    const b = blocks.map((b) => ({
+      ...b,
+      changed: false,
+    }));
+    setBlocks([
+      ...b,
+      {
+        ...mockBlock,
+        config: {
+          ...mockBlock.config,
+          fontName,
+          text,
+          topOffsetInMillimeters: getRandom(10, paperHeight - 10),
+          leftOffsetInMillimeters: getRandom(10, paperWidth - 10),
+        },
+        id: blockId,
+      },
+    ]);
+    setSync(true);
+    setSelectedBlockIndex(blockId);
+  };
+  const handleBlockChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null,
+    text?: string,
+    v?: any
+  ) => {
+    pushHistory();
     let {
       name = null,
       value = null,
       type = null,
       // @ts-ignore
-      checked = null
+      checked = null,
     } = e?.target || {};
 
     if (text) {
       if (text === "alignment") {
-        name = 'alignment';
+        name = "alignment";
         value = align;
       } else if (text === "size") {
-        type = 'number';
-        name = 'fontSize';
+        type = "number";
+        name = "fontSize";
         if (size === "small") value = "2";
         if (size === "medium") value = "4";
         if (size === "large") value = "6";
+      } else if (text == "rotation") {
+        name = "rotation";
+        value = v;
       }
     }
-    setSync(true)
+    setSync(true);
     setBlocks((prevBlocks) =>
       prevBlocks.map((block) => {
-        if (block.id !== selectedBlockIndex) return { ...block, changed: false };
-    
-        if (name === 'name') {
+        if (block.id !== selectedBlockIndex)
+          return { ...block, changed: false };
+
+        if (name === "name") {
           return {
             ...block,
-            name: value ?? undefined, 
-            changed: true
+            name: value ?? undefined,
+            changed: true,
           };
         }
-    
+
         const newVal =
-          name === 'alignment' ? value :
-          name === 'multiline' ? (value as string).toLowerCase() === 'true' :
-          type === 'checkbox' ? checked :
-          type === 'number'
-            ? parseFloat((name === 'r' || name === 'g' || name === 'b') ? Math.max((+!value) % 255, 0).toString() : (value as string))
-            : value;
-    
+          name === "alignment"
+            ? value
+            : name === "multiline"
+              ? (value as string).toLowerCase() === "true"
+              : type === "checkbox"
+                ? checked
+                : type === "number"
+                  ? parseFloat(
+                      name === "r" || name === "g" || name === "b"
+                        ? Math.max(+!value % 255, 0).toString()
+                        : (value as string)
+                    )
+                  : value;
+
         return {
           ...block,
           changed: true,
@@ -150,11 +290,10 @@ function mutateSilently(newBlocks : Block[]) {
         };
       })
     );
-    
   };
 
   useEffect(() => {
-    if (lastUpdatedBlockId === 'all') {
+    if (lastUpdatedBlockId === "all") {
       setPositions(() => {
         const reset: Record<number, Position> = {};
         blocks.forEach((block) => {
@@ -166,22 +305,19 @@ function mutateSilently(newBlocks : Block[]) {
     }
   }, [svgGroups, lastUpdatedBlockId]);
 
-  useCenterScroll(containerRef, svgData);
-
   useEffect(() => {
     if (GroupIdentifierUrlMap.size === 0) return;
 
     const queryParams = [...GroupIdentifierUrlMap.entries()]
       .map(([_, value]) => `${value}`)
-      .join('&');
+      .join("&");
     setParametersUrl(queryParams);
   }, [GroupIdentifierUrlMap]);
 
-
   const fetchSVG = useCallback(
-    async ( regenrateAll = true) => {
+    async (regenrateAll = true) => {
       try {
-        if(!svgData) regenrateAll=true
+        if (!svgData) regenrateAll = true;
         const b = regenrateAll ? blocks : blocks.filter((b) => b.changed);
 
         const bodyData = buildBodyData({
@@ -198,102 +334,114 @@ function mutateSilently(newBlocks : Block[]) {
         if (!response.ok) throw new Error();
         setLastUpdatedBlockId("all");
 
-        setSvgData(
-          addWhiteBackgroundAndBordersToSVG(
-            text,
-            svgData,
-          )
-        );
+        setSvgData(addWhiteBackgroundAndBordersToSVG(text, svgData));
 
-        const paramUrlCount = Number(response.headers.get('X-Parameters-Url')) || 0;
+        const paramUrlCount =
+          Number(response.headers.get("X-Parameters-Url")) || 0;
         if (paramUrlCount !== 1) {
           const newMap = new Map<number, string>();
           for (let i = 1; i <= paramUrlCount; ++i) {
-            const value = response.headers.get('X-Parameters-Url' + i);
+            const value = response.headers.get("X-Parameters-Url" + i);
             if (value) newMap.set(i, value);
           }
           setGroupIdentifierUrlMap(newMap);
         } else {
           for (let [header, value] of response.headers.entries()) {
-            if (header.toLowerCase().startsWith('x-parameters-url')) {
-              const id = header.slice('X-Parameters-Url'.length);
+            if (header.toLowerCase().startsWith("x-parameters-url")) {
+              const id = header.slice("X-Parameters-Url".length);
               if (id) updateMapValue(id, value);
             }
           }
         }
-
       } catch (e) {
         console.error(e);
         setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>');
       }
     },
-    [blocks, selectedBlockIndex, paperWidth, paperHeight, format, selectedConfigId, config, svgData, isTemplate, placeholders]
+    [
+      blocks,
+      selectedBlockIndex,
+      paperWidth,
+      paperHeight,
+      format,
+      selectedConfigId,
+      config,
+      svgData,
+      isTemplate,
+      placeholders,
+    ]
   );
 
-  const handleSendRequest = useCallback(async () => {
-    if (!parametersUrl) return;
-    try {
-      const bodyData = buildBodyData({
-        blocks,
-        paperWidth,
-        paperHeight,
-        format,
-        selectedConfigId,
-        placeholders,
-        isTemplate,
-      });
+  // const handleSendRequest = useCallback(async () => {
+  //   if (!parametersUrl) return;
+  //   try {
+  //     const bodyData = buildBodyData({
+  //       blocks,
+  //       paperWidth,
+  //       paperHeight,
+  //       format,
+  //       selectedConfigId,
+  //       placeholders,
+  //       isTemplate,
+  //     });
 
-      const { text, response } = await post("/preview" + parametersUrl, bodyData);
-      if (!response.ok) throw new Error();
+  //     const { text, response } = await post(
+  //       "/preview" + parametersUrl,
+  //       bodyData
+  //     );
+  //     if (!response.ok) throw new Error();
 
-      setSvgData(
-        addWhiteBackgroundAndBordersToSVG(
-          text,
-          svgData,
-        )
-      );
+  //     setSvgData(addWhiteBackgroundAndBordersToSVG(text, svgData));
 
-      const paramUrlCount = Number(response.headers.get('X-Parameters-Url')) || 0;
-      if (paramUrlCount !== 1) {
-        const newMap = new Map<number, string>();
-        for (let i = 1; i <= paramUrlCount; ++i) {
-          const value = response.headers.get('X-Parameters-Url' + i);
-          if (value) newMap.set(i, value);
-        }
-        setGroupIdentifierUrlMap(newMap);
-      } else {
-        for (let [header, value] of response.headers.entries()) {
-          if (header.toLowerCase().startsWith('x-parameters-url')) {
-            const id = header.slice('X-Parameters-Url'.length);
-            if (id) updateMapValue(id, value);
-          }
-        }
-      }
-    } catch {
-      setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>');
-    }
-  }, [parametersUrl, blocks, paperWidth, paperHeight, format, selectedConfigId, config, svgData]);
+  //     const paramUrlCount =
+  //       Number(response.headers.get("X-Parameters-Url")) || 0;
+  //     if (paramUrlCount !== 1) {
+  //       const newMap = new Map<number, string>();
+  //       for (let i = 1; i <= paramUrlCount; ++i) {
+  //         const value = response.headers.get("X-Parameters-Url" + i);
+  //         if (value) newMap.set(i, value);
+  //       }
+  //       setGroupIdentifierUrlMap(newMap);
+  //     } else {
+  //       for (let [header, value] of response.headers.entries()) {
+  //         if (header.toLowerCase().startsWith("x-parameters-url")) {
+  //           const id = header.slice("X-Parameters-Url".length);
+  //           if (id) updateMapValue(id, value);
+  //         }
+  //       }
+  //     }
+  //   } catch {
+  //     setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>');
+  //   }
+  // }, [
+  //   parametersUrl,
+  //   blocks,
+  //   paperWidth,
+  //   paperHeight,
+  //   format,
+  //   selectedConfigId,
+  //   config,
+  //   svgData,
+  // ]);
 
   const handleGenerate = (regenrateAll = true, samePreview = false) => {
     fetchSVG(regenrateAll);
   };
 
-  useDebounce(
-    () => {
-      if (needsSync) {
-        handleGenerate(false);   
-        setSync(false);          
-      }
-    },
-    150,
-    [needsSync, isTemplate, placeholders] 
-  );
-    useSvgGroups(svgData, svgGroups,setSvgGroups);
-
   return (
-    <div style={{ display: 'flex', width: '100%' }}>
+    <>
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
+      <br />
 
-      <SvgCard
+      <div style={{ display: "flex", width: "100%" }}>
+        {/* <SvgCard
         svgGroups={svgGroups}
         setBlocks={setBlocks}
         setPositions={setPositions}
@@ -302,79 +450,351 @@ function mutateSilently(newBlocks : Block[]) {
         containerRef={containerRef}
         cardRef={cardRef}
         setSync={setSync}
-      />
+        pushHistory={pushHistory}
+      /> */}
 
-      <button style={{ marginLeft: '10px', marginBottom: '5px', marginTop: '0px', padding: "10px" }} onClick={() => handleGenerate()}>
-        Generate Different Preview
-      </button>
-      <button style={{ marginLeft: '10px', marginBottom: '5px', marginTop: '0px', padding: "10px" }} onClick={() => handleDeleteBlock()}>
-        Delete Block
-      </button>
-      <button style={{ marginLeft: '10px', marginBottom: '5px', marginTop: '0px', padding: "10px" }} onClick={() => handleAddBlock()}>
-        Add Block
-      </button>
+        <div style={{ margin: "20px 0", position: "absolute", zIndex: 99 }}>
+          {/* <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            flexWrap: "wrap",
+            marginTop: "10px",
 
-      <div style={{ width: '45%', margin: '20px 0' }}>
-        <ConfigForm
-          handleBlockChange={handleBlockChange}
-          setPaperHeight={setPaperHeight}
-          setPaperWidth={setPaperWidth}
-          align={align}
-          setAlign={setAlign}
-          blocks={blocks}
-          selectedBlockIndex={selectedBlockIndex}
-          setSelectedBlockIndex={setSelectedBlockIndex}
-          size={size}
-          setSize={setSize}
-        />
+            padding: "10px",
+            borderTop: "1px solid #ccc",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+              marginTop: "10px",
+              padding: "10px",
+            }}
+          >
+            <button
+              onClick={() => handleGenerate()}
+              style={{
+                background: "#e3e55f",
 
-<div style={{
-  height:"400px",
-  overflow:'scroll'
-}}>
+                color: "black",
+                padding: "10px 16px",
+                fontSize: "14px",
+                borderRadius: "5px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              🔄 Generate Preview
+            </button>
 
+            <button
+              onClick={() => handleDeleteBlock()}
+              style={{
+                background: "#e3e55f",
 
-{Array.from({ length: symbolCount }, (_, index) => (
-  <Symbol key={index} id={index + 1} size={70}  handleAddBlock={handleAddBlock}/>
-))}
-</div>
+                color: "black",
+                padding: "10px 16px",
+                fontSize: "14px",
+                borderRadius: "5px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              🗑️ Delete Block
+            </button>
 
+            <button
+              onClick={() => handleAddBlock()}
+              style={{
+                background: "#e3e55f",
+                color: "black",
+                padding: "10px 16px",
+                fontSize: "14px",
+                borderRadius: "5px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              ➕ Add Block
+            </button>
+
+            <button
+              onClick={() => undo()}
+              style={{
+                background: "#e3e55f",
+                color: "black",
+                padding: "10px 16px",
+                fontSize: "14px",
+                borderRadius: "5px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              ↩️ Undo
+            </button>
+
+            <button
+              onClick={() => redo()}
+              style={{
+                background: "#e3e55f",
+
+                color: "black",
+                padding: "10px 16px",
+                fontSize: "14px",
+                borderRadius: "5px",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              ↪️ Redo
+            </button>
+          </div>
+        </div> */}
+
+          <ConfigForm
+            handleBlockChange={handleBlockChange}
+            setPaperHeight={setPaperHeight}
+            setPaperWidth={setPaperWidth}
+            align={align}
+            setAlign={setAlign}
+            blocks={blocks}
+            selectedBlockIndex={selectedBlockIndex}
+            setSelectedBlockIndex={setSelectedBlockIndex}
+            size={size}
+            setSize={setSize}
+            handleAddBlock={handleAddBlock}
+            setBackgroundImage={setBackgroundImage}
+          />
+        </div>
+
+        <div
+          style={{
+            background: "#f2ede9",
+            width: "90%",
+            zIndex: 1,
+            right: 0,
+            height: "740px",
+            borderRadius: "10px",
+            display: "flex",
+            marginLeft: "auto",
+          }}
+        >
+          <div style={{ padding: "20px", width: "100%", display: "flex" }}>
+            <div
+              style={{
+                width: "25%",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <h1
+                style={{
+                  marginTop: "80px",
+                  fontFamily: "sans-serif",
+                }}
+              >
+                Post Card
+              </h1>
+            </div>
+
+            <div
+              style={{
+                width: "75%",
+                display: "flex",
+                height: "100%",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
+                  position: "relative",
+                }}
+              >
+                <div
+                  style={{
+                    width: "20%",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    height: (paperHeight * PX_PER_MM * zoom) / 100,
+                    alignItems: "end",
+                  }}
+                >
+                  <Button
+                    label="Flip Card"
+                    icon="🚀"
+                    onClick={() => setIsFlipped(!isFlipped)}
+                    width="150px"
+                    height="30px"
+                    padding="10px 10px"
+                    backgroundColor="white"
+                    hoverColor="#ebed8e"
+                    color="black"
+                    fontSize="14px"
+                    fontWeight="600"
+                    borderRadius="8px"
+                  />{" "}
+                  <div>
+                    <Button
+                      label="Undo"
+                      icon="🚀"
+                      onClick={undo}
+                      width="150px"
+                      height="30px"
+                      padding="10px 10px"
+                      backgroundColor="white"
+                      hoverColor="#ebed8e"
+                      color="black"
+                      fontSize="14px"
+                      fontWeight="600"
+                      borderRadius="8px"
+                    />{" "}
+                    <Button
+                      label="Redo"
+                      icon="🚀"
+                      onClick={redo}
+                      width="150px"
+                      height="30px"
+                      padding="10px 10px"
+                      backgroundColor="white"
+                      hoverColor="#ebed8e"
+                      color="black"
+                      fontSize="14px"
+                      fontWeight="600"
+                      borderRadius="8px"
+                    />
+                  </div>
+                  <Button
+                    label="test"
+                    icon="🚀"
+                    onClick={redo}
+                    width="150px"
+                    height="30px"
+                    padding="10px 10px"
+                    backgroundColor="white"
+                    hoverColor="#ebed8e"
+                    color="black"
+                    fontSize="14px"
+                    fontWeight="600"
+                    borderRadius="8px"
+                  />
+                </div>
+                <div
+                  style={{
+                    width: (PX_PER_MM * paperWidth * zoom) / 100,
+                    height: "100%",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    position: "relative",
+                    flexDirection: paperHeight > paperWidth ? "row" : "column",
+                    margin: "0 25px",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      height: "20px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "100%",
+
+                        display: "flex",
+                        justifyContent: "end",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Button
+                        label="Share"
+                        icon="🚀"
+                        onClick={() => alert("Clickeed!")}
+                        width="160px"
+                        height="35px"
+                        padding="10px 10px"
+                        backgroundColor="#2000a7"
+                        hoverColor="#ebed8e"
+                        color="white"
+                        fontSize="14px"
+                        fontWeight="600"
+                        borderRadius="8px"
+                      />
+                      <Button
+                        label="Save Draft"
+                        icon="🚀"
+                        onClick={() => alert("Clickeed!")}
+                        width="160px"
+                        height="35px"
+                        padding="10px 10px"
+                        backgroundColor="#e3e55f"
+                        hoverColor="#ebed8e"
+                        color="black"
+                        fontSize="14px"
+                        fontWeight="600"
+                        borderRadius="8px"
+                      />
+                    </div>
+                    <div
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        fontFamily: "sans-serif",
+                      }}
+                    >
+                      {!isFlipped ? "Front view" : "Back view"}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      width: (PX_PER_MM * paperWidth * zoom) / 100,
+                      height: (PX_PER_MM * paperHeight * zoom) / 100,
+                      maxHeight: "685px",
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignItems: "center",
+                      position: "relative",
+                      boxSizing: "border-box",
+                      marginTop: "70px",
+                    }}
+                  >
+                    <SvgCard
+                      svgGroups={svgGroups}
+                      setBlocks={setBlocks}
+                      setPositions={setPositions}
+                      positions={positions}
+                      setSelectedBlockIndex={setSelectedBlockIndex}
+                      containerRef={containerRef}
+                      cardRef={cardRef}
+                      setSync={setSync}
+                      zoom={zoom}
+                      pushHistory={pushHistory}
+                      pageWidth={paperWidth}
+                      pageHeight={paperHeight}
+                      isFlipped={isFlipped}
+                      undo={undo}
+                      redo={redo}
+                      selectedBlockIndex={selectedBlockIndex}
+                      handleBlockChange={handleBlockChange}
+                      blocks={blocks}
+                      backgroundImage={backgroundImage}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-                
-
-
-    </div>
+    </>
   );
 }
-
-function Symbol({ id, size = 48, className = '', handleAddBlock }) {
-  const symbolElement = document.getElementById(`sym-${id}`);
-
-  const vb = symbolElement
-    ?.getAttribute('viewBox')
-    ?.split(' ')
-    .map(Number) || [0, 0, 100, 100];
-
-  const [minX, minY, vbW, vbH] = vb;
-
-  const character = symbolElement?.getAttribute('data-caracter') || '';
-  const fontName = symbolElement?.getAttribute('data-category') || '';
-
-  return (
-    <svg
-      className={className}
-      style={{ cursor: 'pointer' }}
-      onClick={() => {
-        handleAddBlock(character,fontName); 
-      }}
-      width={size}
-      height={size}
-      viewBox={`${minX} ${minY} ${vbW} ${vbH}`}
-      preserveAspectRatio="xMidYMid meet"
-      aria-hidden="true"
-    >
-      <use href={`#sym-${id}`} />
-    </svg>
-  );
-}
-

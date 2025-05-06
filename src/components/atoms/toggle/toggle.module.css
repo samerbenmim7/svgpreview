@@ -1,0 +1,28 @@
+.toggleContainer {
+  width: 50px;
+  height: 28px;
+  background-color: #cfd100;
+  border-radius: 14px;
+  padding: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+}
+
+.toggleContainer:hover {
+  background-color: #bbb;
+}
+
+.toggleSwitch {
+  width: 22px;
+  height: 22px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.toggleSwitch.on {
+  transform: translateX(22px);
+  background-color: white;
+}

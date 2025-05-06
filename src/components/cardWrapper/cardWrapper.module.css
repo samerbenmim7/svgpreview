@@ -1,0 +1,9 @@
+.card {
+  transform: translateY(30%);
+  background: #e8ea7e;
+  border-radius: 12px;
+  padding: 24px;
+  width: 300px;
+  font-family: sans-serif;
+  box-sizing: border-box;
+}
