@@ -100,13 +100,6 @@ export default function BackgroundView({ setBackgroundImage }) {
           </div>
         </div>
       </div>
-      {/* <button
-        onClick={() => setBackgroundImage("")} ;
-        style={{ display: "flex", alignSelf: "center", margin: "auto" }}
-      >
-        no background
-      </button> */}
-      {/* Deckkraft */}
 
       <div className={styles.label}>Opaceity</div>
       <div className={styles.sliderRow}>

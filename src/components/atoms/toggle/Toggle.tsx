@@ -1,7 +1,12 @@
 import React from "react";
 import styles from "./toggle.module.css";
 
-const Toggle = ({ isOn, handleToggle }) => {
+interface ToggleProps {
+  isOn: boolean;
+  handleToggle: () => void;
+}
+
+const Toggle: React.FC<ToggleProps> = ({ isOn, handleToggle }) => {
   return (
     <div
       className={styles.toggleContainer}

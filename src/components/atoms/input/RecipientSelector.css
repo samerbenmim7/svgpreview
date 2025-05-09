@@ -1,0 +1,49 @@
+.recipient-wrapper {
+  font-family: sans-serif;
+  color: #000;
+}
+
+.recipient-label {
+  font-size: 16px;
+  font-weight: 300;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.recipient-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.recipient-sub {
+  font-weight: normal;
+  font-size: 16px;
+}
+
+.recipient-box {
+  border: 0.4px solid #000;
+  border-radius: 10px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background-color: white;
+  font-size: 16px;
+  user-select: none;
+}
+
+.recipient-value {
+  font-weight: normal;
+  min-width: 20px;
+  text-align: center;
+}
+
+.arrow-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #000;
+  padding: 0;
+}

@@ -194,7 +194,7 @@ export const defaultBlocks: Block[] = [
     changed: true,
     name: "content",
     config: {
-      text: "Thank you so much for your warm welcome, comfortable accommodations, and exceptional hospitality. Your support made my integration smooth and enjoyable. My deepest gratitude to Ahmad, {{NAME1}}, An-Guo, Steffi, Momo & Coco, and the entire team for your exceptional efforts in making me feel at home.",
+      text: "Thank you so much for your warm welcome, comfortable accommodations, and exceptional hospitality. Your support made my integration smooth and enjoyable. My deepest gratitude to Ahmad, Siva, An-Guo, Steffi, Momo & Coco, and the entire team for your exceptional efforts in making me feel at home.",
       widthInMillimeters: 185,
       fontSize: 5,
       fontName: "enrico",

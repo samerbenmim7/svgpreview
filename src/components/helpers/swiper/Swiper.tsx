@@ -3,18 +3,27 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
-import "./ImageSwiper.css"; // custom styles
+import "./ImageSwiper.css";
+import { Symbol } from "../../atoms/symbol/Symbol";
+interface ImageSwiperProps {
+  images?: string[];
+  setBackgroundImage?: (imgUrl: string) => void;
+  forsprites?: boolean;
+  symbolCount?: number;
+  handleAddBlock?: (character: string, fontName: string) => void;
+  symbolIds?: number[];
+}
 
-const ImageSwiper = ({
+const ImageSwiper: React.FC<ImageSwiperProps> = ({
   images = [],
-  setBackgroundImage = null,
+  setBackgroundImage,
   forsprites = false,
   symbolCount = 0,
   handleAddBlock,
-  symbolIds,
+  symbolIds = [],
 }) => {
-  const prevRef = useRef(null);
-  const nextRef = useRef(null);
+  const prevRef = useRef<HTMLDivElement | null>(null);
+  const nextRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <div
@@ -27,15 +36,28 @@ const ImageSwiper = ({
       <div ref={nextRef} className="swiper-button custom-next">
         ›
       </div>
+
       <div style={{ width: "80%", display: "flex", justifyContent: "center" }}>
         <Swiper
           modules={[Navigation]}
           slidesPerView={4}
           spaceBetween={0}
-          loop={true}
+          loop
           onBeforeInit={(swiper) => {
-            swiper.params.navigation.prevEl = prevRef.current;
-            swiper.params.navigation.nextEl = nextRef.current;
+            const navigation = swiper.params.navigation;
+
+            if (
+              navigation &&
+              typeof navigation !== "boolean" &&
+              prevRef.current &&
+              nextRef.current
+            ) {
+              navigation.prevEl = prevRef.current;
+              navigation.nextEl = nextRef.current;
+
+              swiper.navigation.init();
+              swiper.navigation.update();
+            }
           }}
           navigation={{
             prevEl: prevRef.current,
@@ -46,20 +68,15 @@ const ImageSwiper = ({
             ? images.map((img, index) => (
                 <SwiperSlide style={{ cursor: "pointer" }} key={index}>
                   <img
-                    onClick={() => {
-                      if (setBackgroundImage) setBackgroundImage(img);
-                    }}
+                    onClick={() => setBackgroundImage?.(img)}
                     src={img}
                     alt={`slide-${index}`}
                     className="slide-image"
-                    style={{
-                      width: "42px",
-                      height: "42px",
-                    }}
+                    style={{ width: "42px", height: "42px" }}
                   />
                 </SwiperSlide>
               ))
-            : symbolIds?.map((id) => {
+            : symbolIds.sort().map((id) => {
                 const symbolElement = document.getElementById(`sym-${id}`);
 
                 const vb = symbolElement
@@ -75,7 +92,6 @@ const ImageSwiper = ({
                 return (
                   <SwiperSlide key={id} style={{ cursor: "pointer" }}>
                     <Symbol
-                      key={id}
                       id={id}
                       size={70}
                       handleAddBlock={handleAddBlock}
@@ -93,32 +109,3 @@ const ImageSwiper = ({
 };
 
 export default ImageSwiper;
-
-function Symbol({
-  id,
-  size = 48,
-  className = "",
-  handleAddBlock,
-  vb,
-  character,
-  fontName,
-}) {
-  const [minX, minY, vbW, vbH] = vb;
-
-  return (
-    <svg
-      className={className}
-      style={{ cursor: "pointer !important" }}
-      onClick={() => {
-        if (handleAddBlock) handleAddBlock(character, fontName);
-      }}
-      width={size}
-      height={size}
-      viewBox={`${minX} ${minY} ${vbW} ${vbH}`}
-      preserveAspectRatio="xMidYMid meet"
-      aria-hidden="true"
-    >
-      <use href={`#sym-${id}`} />
-    </svg>
-  );
-}

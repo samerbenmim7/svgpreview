@@ -1,3 +1,5 @@
+import { initialRows } from "../Recipients";
+
 interface ExtractResult {
   before: string;
   after: string;
@@ -38,7 +40,7 @@ interface BuildBodyDataParams {
   format: string;
   selectedConfigId: number;
   placeholders: Placeholder[];
-  isTemplate: boolean;
+  recipientId: number | null;
 }
 
 export function extractBeforeAfter(str: string, id: number): ExtractResult {
@@ -125,8 +127,9 @@ export function buildBodyData({
   format,
   selectedConfigId,
   placeholders,
-  isTemplate,
+  recipientId,
 }: BuildBodyDataParams) {
+  console.log(recipientId);
   return {
     fields: blocks.map((b) => ({
       text: b.config.text,
@@ -150,16 +153,23 @@ export function buildBodyData({
       format,
     },
     configId: selectedConfigId,
-    placeholdersValues: placeholders.reduce<Record<string, string>>(
-      (acc, ph) => {
-        if (ph.name) {
-          acc[ph.name] = ph.value;
-        }
-        return acc;
-      },
-      {}
-    ),
-    isTemplate,
+    placeholdersValues:
+      recipientId == null
+        ? placeholders.reduce<Record<string, string>>((acc, ph) => {
+            if (ph.name) {
+              acc[ph.name] = ph.value;
+            }
+            return acc;
+          }, {})
+        : placeholders.reduce<Record<string, string>>((acc, ph) => {
+            if (ph.name) {
+              const person = initialRows?.find((e) => e?.id == recipientId);
+              console.log(person);
+              acc[ph.name] = person?.[ph.name.toLowerCase()] ?? ph.value;
+            }
+            return acc;
+          }, {}),
+    isTemplate: recipientId == 0,
   };
 }
 function removeFirstAndLastLine(text) {

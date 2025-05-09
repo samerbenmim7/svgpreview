@@ -1,27 +1,30 @@
-import React from "react";
-import { HTMLAttributes } from "react";
+import React, { HTMLAttributes, useState } from "react";
 import { ReactAnglePicker } from "react-angle-picker";
+import { Block } from "../../../types/types";
 
-export function BlockToolbar(
-  props: HTMLAttributes<HTMLDivElement> & {
-    visible: boolean;
-    fontSize: number;
-    onFontSizeChange: (size: number) => void;
-    style?: React.CSSProperties;
-    handleBlockChange;
-    block;
-  }
-) {
-  const {
-    visible,
-    fontSize,
-    onFontSizeChange,
-    style,
-    handleBlockChange,
-    block,
-    ...rest
-  } = props;
-  const [angle, setAngle] = React.useState(block.config.rotation);
+interface BlockToolbarProps extends HTMLAttributes<HTMLDivElement> {
+  visible: boolean;
+  fontSize: number;
+  onFontSizeChange: (size: number) => void;
+  handleBlockChange: (
+    e: React.ChangeEvent<HTMLInputElement> | null,
+    key?: string,
+    value?: number
+  ) => void;
+  block: Block;
+  style?: React.CSSProperties;
+}
+
+export const BlockToolbar: React.FC<BlockToolbarProps> = ({
+  visible,
+  fontSize,
+  onFontSizeChange,
+  handleBlockChange,
+  block,
+  style,
+  ...rest
+}) => {
+  const [angle, setAngle] = useState<number>(block.config.rotation);
 
   return (
     <div
@@ -30,8 +33,8 @@ export function BlockToolbar(
       style={{
         position: "absolute",
         zIndex: 9999,
-        padding: "15px", // 👈 invisible hover margin
-        transform: style?.transform, // allow caller to control placement
+        padding: "15px",
+        transform: style?.transform,
         pointerEvents: visible ? "auto" : "none",
       }}
     >
@@ -49,16 +52,13 @@ export function BlockToolbar(
           gap: 14,
           fontSize: 18,
           userSelect: "none",
-
           opacity: visible ? 1 : 0,
           transform: visible
             ? "translateY(0) scale(1)"
             : "translateY(-8px) scale(0.9)",
-
           transition: visible
             ? "opacity 200ms ease 500ms, transform 200ms ease 500ms"
             : "opacity 200ms ease 100ms, transform 200ms ease 100ms",
-
           pointerEvents: visible ? "auto" : "none",
           ...style,
         }}
@@ -81,8 +81,7 @@ export function BlockToolbar(
           </span>
         </div>
 
-        {/* Font size control */}
-
+        {/* Font size and rotation controls */}
         <label
           style={{
             display: "flex",
@@ -105,8 +104,8 @@ export function BlockToolbar(
           <ReactAnglePicker
             value={angle}
             width={40}
-            onChange={(e) => setAngle(e)}
-            onAfterChange={(e) => {
+            onChange={(e: number) => setAngle(e)}
+            onAfterChange={(e: number) => {
               handleBlockChange(null, "rotation", e);
             }}
           />
@@ -114,4 +113,4 @@ export function BlockToolbar(
       </div>
     </div>
   );
-}
+};

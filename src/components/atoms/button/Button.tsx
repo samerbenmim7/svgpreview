@@ -16,6 +16,7 @@ type Props = {
   fontWeight?: string | number;
   borderRadius?: string;
   border?: string;
+  align?: string;
 };
 
 const Button: React.FC<Props> = ({
@@ -34,6 +35,7 @@ const Button: React.FC<Props> = ({
   fontWeight = "500",
   borderRadius = "10px",
   border = "none",
+  align = "left",
 }) => {
   return (
     <button
@@ -52,10 +54,11 @@ const Button: React.FC<Props> = ({
         cursor: disabled ? "not-allowed" : "pointer",
         display: "flex",
         alignItems: "center",
-        justifyContent: "left",
+        justifyContent: align,
         gap: "10px",
         transition: "background-color 0.3s ease",
         margin: "5px 5px",
+        textAlign: "center",
       }}
       onMouseEnter={(e) => {
         if (!disabled) e.currentTarget.style.backgroundColor = hoverColor;

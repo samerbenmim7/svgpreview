@@ -27,25 +27,19 @@ import {
 import { useDebounce } from "./hooks/useDebounce";
 import { useCenterScroll } from "./hooks/useCenterScroll";
 import { useSvgGroups } from "./hooks/useSvgGroup";
-import { DEFAULT_FONT, PAPER_SIZES_MM, PX_PER_MM } from "./Utils/const";
+import { DEFAULT_FONT, PX_PER_MM } from "./Utils/const";
 import { useKeyboard } from "./hooks/useKeyboard";
 import { useSpriteLoader } from "./hooks/useSpriteLoader";
 import TextSettingsCard from "./components/MenuViews/blocksConfigurator/BlocksConfigurator";
 import Button from "./components/atoms/button/Button";
 import { Columns } from "react-feather";
 import Recipients from "./Recipients";
-import RecipientsPage from "./RecipientsPage";
-import Templates from "./Templates";
-import "bootstrap-icons/font/bootstrap-icons.css";
-import RecipientSelector from "./components/atoms/input/Input";
-import PaperSizeSelector from "./components/atoms/SizeSelector/PaperSizeSelector";
 
-export default function App() {
+export default function RecipientsPage() {
   // Refs
   const cardRef = useRef<HTMLDivElement | null>(null);
   const blockNextId = useRef(defaultBlocks.length + 1);
-  const [zoom, setZoom] = useState<number>(39);
-  const [paper, setPaper] = useState(Object.keys(PAPER_SIZES_MM)[0]);
+  const [zoom, setZoom] = useState<number>(34);
 
   // State declarations
   const [positions, setPositions] = useState<Record<number, Position>>({});
@@ -57,7 +51,6 @@ export default function App() {
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number>(1);
   const [paperWidth, setPaperWidth] = useState<number>(50);
   const [paperHeight, setPaperHeight] = useState<number>(105);
-  const [recipientId, setRecipientId] = useState<number>(0);
   const [selectedConfigId, setSelectedConfigId] = useState<number>(25);
   const [format, setFormat] = useState<string>("svg");
   const [config, setConfig] = useState<any>(defaultConfig);
@@ -76,10 +69,10 @@ export default function App() {
   const [lastUpdatedBlockId, setLastUpdatedBlockId] = useState<string | null>(
     null
   );
-
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
   const [placeholders, setPlaceholders] = useState<Placeholder[]>([
     { name: "COMPANY", value: "WunderPen" },
+    { name: "NAME1", value: "Siva" },
     { name: "SENDER", value: "Samer Ben Mim," },
   ]);
 
@@ -88,22 +81,12 @@ export default function App() {
   useDebounce(
     () => {
       if (needsSync) {
-        handleGenerate(true);
-        setSync(false);
-      }
-    },
-    150,
-    [recipientId]
-  );
-  useDebounce(
-    () => {
-      if (needsSync) {
         handleGenerate(false);
         setSync(false);
       }
     },
     150,
-    [needsSync, recipientId, placeholders]
+    [needsSync, isTemplate, placeholders]
   );
   useSvgGroups(svgData, svgGroups, setSvgGroups);
   useKeyboard(
@@ -347,7 +330,7 @@ export default function App() {
           format,
           selectedConfigId,
           placeholders,
-          recipientId,
+          isTemplate,
         });
 
         const { text, response } = await post("/preview", bodyData);
@@ -388,7 +371,6 @@ export default function App() {
       config,
       svgData,
       isTemplate,
-      recipientId,
       placeholders,
     ]
   );
@@ -446,7 +428,6 @@ export default function App() {
   // ]);
 
   const handleGenerate = (regenrateAll = true, samePreview = false) => {
-    console.log("here");
     fetchSVG(regenrateAll);
   };
 
@@ -462,219 +443,20 @@ export default function App() {
     console.log("changed", window.view);
     return () => window.removeEventListener("view", handleChange);
   }, []);
-  if (myValue == "Templates") return <Templates />;
-  if (myValue == "Recipients") return <RecipientsPage />;
-  if (myValue == "Mailing")
-    return (
-      <h1
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100%",
-          height: "800px",
-        }}
-      >
-        Mailing Step
-      </h1>
-    );
-  if (myValue == "Shipping" || myValue == "Shipping (optional)")
-    return (
-      <h1
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100%",
-          height: "800px",
-        }}
-      >
-        Shipping Step
-      </h1>
-    );
-  if (myValue == "Completion")
-    return (
-      <div>
-        <h1
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            width: "100%",
-            marginTop: "300px",
-            height: "40px",
-          }}
-        >
-          Checkout Step
-        </h1>
-        <h3
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            width: "100%",
-            height: "40px",
-          }}
-        >
-          Payment and Invoicing Details
-        </h3>
-      </div>
-    );
 
   return (
     <>
       <br />
       <br />
-      <br />
-      <br />
 
       <div style={{ display: "flex", width: "100%" }}>
-        {/* <SvgCard
-        svgGroups={svgGroups}
-        setBlocks={setBlocks}
-        setPositions={setPositions}
-        positions={positions}
-        setSelectedBlockIndex={setSelectedBlockIndex}
-        containerRef={containerRef}
-        cardRef={cardRef}
-        setSync={setSync}
-        pushHistory={pushHistory}
-      /> */}
+        <div
+          style={{ margin: "20px 0", position: "absolute", zIndex: 99 }}
+        ></div>
 
         <div
           style={{
-            margin: "20px 0",
-            marginRight: "-450px",
-
-            zIndex: 2,
-          }}
-        >
-          {/* <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            flexWrap: "wrap",
-            marginTop: "10px",
-
-            padding: "10px",
-            borderTop: "1px solid #ccc",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              flexWrap: "wrap",
-              marginTop: "10px",
-              padding: "10px",
-            }}
-          >
-            <button
-              onClick={() => handleGenerate()}
-              style={{
-                background: "#e3e55f",
-
-                color: "black",
-                padding: "10px 16px",
-                fontSize: "14px",
-                borderRadius: "5px",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              🔄 Generate Preview
-            </button>
-
-            <button
-              onClick={() => handleDeleteBlock()}
-              style={{
-                background: "#e3e55f",
-
-                color: "black",
-                padding: "10px 16px",
-                fontSize: "14px",
-                borderRadius: "5px",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              🗑️ Delete Block
-            </button>
-
-            <button
-              onClick={() => handleAddBlock()}
-              style={{
-                background: "#e3e55f",
-                color: "black",
-                padding: "10px 16px",
-                fontSize: "14px",
-                borderRadius: "5px",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              ➕ Add Block
-            </button>
-
-            <button
-              onClick={() => undo()}
-              style={{
-                background: "#e3e55f",
-                color: "black",
-                padding: "10px 16px",
-                fontSize: "14px",
-                borderRadius: "5px",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              ↩️ Undo
-            </button>
-
-            <button
-              onClick={() => redo()}
-              style={{
-                background: "#e3e55f",
-
-                color: "black",
-                padding: "10px 16px",
-                fontSize: "14px",
-                borderRadius: "5px",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              ↪️ Redo
-            </button>
-          </div>
-        </div> */}
-
-          <ConfigForm
-            handleBlockChange={handleBlockChange}
-            setPaperHeight={setPaperHeight}
-            setPaperWidth={setPaperWidth}
-            align={align}
-            setAlign={setAlign}
-            blocks={blocks}
-            selectedBlockIndex={selectedBlockIndex}
-            setSelectedBlockIndex={setSelectedBlockIndex}
-            size={size}
-            setSize={setSize}
-            handleAddBlock={handleAddBlock}
-            setBackgroundImage={setBackgroundImage}
-            onMouseEnter={() => setBlockShouldDisplayOutline(true)}
-            onMouseLeave={() => setBlockShouldDisplayOutline(false)}
-            paper={paper}
-          />
-        </div>
-
-        <div
-          style={{
-            background: "#f2ede9",
+            // background: "#f2ede9",
             width: "90%",
             zIndex: 1,
             right: 0,
@@ -687,32 +469,24 @@ export default function App() {
           <div style={{ padding: "20px", width: "100%", display: "flex" }}>
             <div
               style={{
-                width: "25%",
+                width: "10%",
                 display: "flex",
-                flexDirection: "column",
+                justifyContent: "center",
               }}
             >
               <h1
                 style={{
                   marginTop: "80px",
-                  marginLeft: "120px",
                   fontFamily: "sans-serif",
-                  display: "flex",
                 }}
               >
-                Post Card
+                Recipients
               </h1>
-              <PaperSizeSelector
-                value={paper}
-                onChange={(o) => setPaper(o)}
-                options={Object.keys(PAPER_SIZES_MM)}
-              />
             </div>
 
             <div
               style={{
                 width: "75%",
-                display: "flex",
                 height: "100%",
               }}
             >
@@ -720,60 +494,43 @@ export default function App() {
                 style={{
                   width: "100%",
                   display: "flex",
-                  justifyContent: "center",
+                  justifyContent: "right",
                   alignItems: "center",
-                  height: "100%",
+                  height: "15%",
                   position: "relative",
                 }}
               >
                 <div
                   style={{
-                    width: "20%",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    height: (paperHeight * PX_PER_MM * zoom) / 100,
-                    alignItems: "end",
-                  }}
-                >
-                  <div></div>
-                </div>
-                <div
-                  style={{
-                    width: (PX_PER_MM * paperWidth * zoom) / 100,
+                    //    width: (PX_PER_MM * paperWidth * zoom) / 100,
                     height: "100%",
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
                     position: "relative",
-                    flexDirection: "column",
-                    margin: "0 25px",
+
+                    flexDirection: paperHeight > paperWidth ? "row" : "column",
+                    // margin: "0 25px",
                   }}
                 >
                   <div
                     style={{
                       position: "relative",
                       width: "100%",
-                      // height: "20px",
+                      height: "20px",
                     }}
                   >
                     <div
                       style={{
-                        width: "100%",
+                        width: "500px",
                         display: "flex",
-
                         justifyContent: "end",
                         alignItems: "center",
                       }}
                     >
                       <Button
                         label="Share"
-                        icon={
-                          <i
-                            style={{ color: "white" }}
-                            className="bi bi-share"
-                          ></i>
-                        }
+                        icon={<i className="bi bi-share"></i>}
                         onClick={() => alert("Clickeed!")}
                         width="160px"
                         height="35px"
@@ -800,135 +557,113 @@ export default function App() {
                         borderRadius="8px"
                       />
                     </div>
-                    <div
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        fontFamily: "sans-serif",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          fontFamily: "sans-serif",
-                        }}
-                      ></div>
-                      <Button
-                        label="Flip Card"
-                        icon={<i className="bi bi-arrow-left-right"></i>}
-                        onClick={() => setIsFlipped(!isFlipped)}
-                        width="120px"
-                        height="30px"
-                        padding="10px 10px"
-                        backgroundColor="white"
-                        hoverColor="#ebed8e"
-                        color="black"
-                        fontSize="14px"
-                        fontWeight="600"
-                        borderRadius="8px"
-                      />{" "}
-                      <div
-                        style={{
-                          display: "flex",
-                          fontFamily: "sans-serif",
-                          marginLeft: "50px",
-                        }}
-                      >
-                        <Button
-                          label="Step Back"
-                          icon={<i className="bi bi-arrow-90deg-left"></i>}
-                          onClick={undo}
-                          width="125px"
-                          height="30px"
-                          padding="10px 10px"
-                          backgroundColor="white"
-                          hoverColor="#ebed8e"
-                          color="black"
-                          fontSize="14px"
-                          fontWeight="600"
-                          borderRadius="8px"
-                        />{" "}
-                        <Button
-                          label="Step Forward"
-                          icon={<i className="bi bi-arrow-90deg-right"></i>}
-                          onClick={redo}
-                          width="140px"
-                          height="30px"
-                          padding="10px 10px"
-                          backgroundColor="white"
-                          hoverColor="#ebed8e"
-                          color="black"
-                          fontSize="14px"
-                          fontWeight="600"
-                          borderRadius="8px"
-                        />
-                      </div>
-                    </div>
                   </div>
-                  <div
-                    style={{
-                      width: (PX_PER_MM * paperWidth * zoom) / 100,
-                      height: (PX_PER_MM * paperHeight * zoom) / 100,
-                      maxHeight: "685px",
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      alignItems: "center",
-                      position: "relative",
-                      boxSizing: "border-box",
-                      marginTop: "15px",
-                    }}
-                  >
-                    <SvgCard
-                      svgGroups={svgGroups}
-                      setBlocks={setBlocks}
-                      setPositions={setPositions}
-                      positions={positions}
-                      setSelectedBlockIndex={setSelectedBlockIndex}
-                      blockShouldDisplayOutline={blockShouldDisplayOutline}
-                      //@ts-ignore
-                      containerRef={containerRef}
-                      //@ts-ignore
-
-                      cardRef={cardRef}
-                      setSync={setSync}
-                      zoom={zoom}
-                      pushHistory={pushHistory}
-                      pageWidth={paperWidth}
-                      pageHeight={paperHeight}
-                      isFlipped={isFlipped}
-                      undo={undo}
-                      redo={redo}
-                      selectedBlockIndex={selectedBlockIndex}
-                      handleBlockChange={handleBlockChange}
-                      blocks={blocks}
-                      backgroundImage={backgroundImage}
-                    />
-                  </div>
-
-                  <div
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      height: "20px",
-                      marginTop: "15px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <RecipientSelector
-                      value={recipientId}
-                      onChange={(e) => {
-                        setSync(true);
-
-                        setRecipientId(e);
-                      }}
-                    />
-                    {!isFlipped ? "Front view" : "Back view"}
-                  </div>
+                  <br />
                 </div>
               </div>
+              <br />
+              <br />
+              <br />
+              <br />
+              <br />
+              <div
+                style={{
+                  margin: "10px 0",
+                  width: "100%",
+                  display: "flex",
+                }}
+              >
+                <Button
+                  label="All"
+                  onClick={() => alert("Clickeed!")}
+                  width="130px"
+                  height="35px"
+                  padding="10px 10px"
+                  backgroundColor="#e3e55f"
+                  hoverColor="#ebed8e"
+                  color="black"
+                  fontSize="14px"
+                  fontWeight="400"
+                  borderRadius="8px"
+                  align="cenfter"
+                />
+                <Button
+                  label="Valid"
+                  icon={<i className="bi bi-check"></i>}
+                  onClick={() => alert("Clickeed!")}
+                  width="140px"
+                  height="35px"
+                  padding="10px 10px"
+                  backgroundColor="white"
+                  hoverColor="#ebed8e"
+                  color="black"
+                  fontSize="14px"
+                  fontWeight="400"
+                  borderRadius="8px"
+                  border="solid 1px black"
+                />
+                <Button
+                  label="Invalid"
+                  icon={<i style={{ color: "red" }} className="bi bi-x"></i>}
+                  onClick={() => alert("Clickeed!")}
+                  width="140px"
+                  height="35px"
+                  padding="10px 10px"
+                  backgroundColor="white"
+                  hoverColor="#ebed8e"
+                  color="red"
+                  fontSize="14px"
+                  fontWeight="400"
+                  borderRadius="8px"
+                  border="solid 1px red"
+                />
+                <Button
+                  label="Action"
+                  icon={<i className="bi bi-cursor"></i>}
+                  onClick={() => alert("Clickeed!")}
+                  width="140px"
+                  height="35px"
+                  padding="10px 10px"
+                  backgroundColor="white"
+                  hoverColor="#ebed8e"
+                  color="black"
+                  fontSize="14px"
+                  fontWeight="400"
+                  borderRadius="8px"
+                  border="solid 1px black"
+                />
+                <Button
+                  label="Delete"
+                  icon={<i className="bi bi-trash"></i>}
+                  onClick={() => alert("Clickeed!")}
+                  width="140px"
+                  height="35px"
+                  padding="10px 10px"
+                  backgroundColor="white"
+                  hoverColor="#ebed8e"
+                  color="black"
+                  fontSize="14px"
+                  fontWeight="400"
+                  borderRadius="8px"
+                  border="solid 1px black"
+                />
+                <Button
+                  label="Download"
+                  icon={<i className="bi bi-box-arrow-down"></i>}
+                  onClick={() => alert("Clickeed!")}
+                  width="140px"
+                  height="35px"
+                  padding="10px 10px"
+                  backgroundColor="white"
+                  hoverColor="#ebed8e"
+                  color="black"
+                  fontSize="14px"
+                  fontWeight="400"
+                  borderRadius="8px"
+                  border="solid 1px black"
+                />
+              </div>
+              <Recipients />
             </div>
           </div>
         </div>
