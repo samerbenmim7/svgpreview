@@ -36,6 +36,7 @@ interface SvgCardProps {
   blocks: Block[];
   backgroundImage: string;
   blockShouldDisplayOutline: boolean;
+  skewAnimateRange;
 }
 
 const SvgCard: React.FC<SvgCardProps> = ({
@@ -57,6 +58,7 @@ const SvgCard: React.FC<SvgCardProps> = ({
   blocks,
   backgroundImage,
   blockShouldDisplayOutline,
+  skewAnimateRange,
 }) => {
   const currentTilt = useRef({ x: 0, y: 0 });
   const targetTilt = useRef({ x: 0, y: 0 });
@@ -94,7 +96,13 @@ const SvgCard: React.FC<SvgCardProps> = ({
     requestAnimationFrame(animateTilt);
   };
 
+  useEffect(() => {
+    targetTilt.current.x = 0;
+    targetTilt.current.y = 0;
+  }, [skewAnimateRange]);
+
   const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
+    if (skewAnimateRange == -1) return;
     if (!cardRef.current) return;
 
     const rect = cardRef.current.getBoundingClientRect();
@@ -107,8 +115,14 @@ const SvgCard: React.FC<SvgCardProps> = ({
     const normX = diffX / (rect.width / 2);
     const normY = diffY / (rect.height / 2);
 
-    const clampedX = Math.max(-0.1, Math.min(0.1, normX));
-    const clampedY = Math.max(-0.1, Math.min(0.1, normY));
+    const clampedX = Math.max(
+      -skewAnimateRange,
+      Math.min(skewAnimateRange, normX)
+    );
+    const clampedY = Math.max(
+      -skewAnimateRange,
+      Math.min(skewAnimateRange, normY)
+    );
 
     targetTilt.current.x = clampedY * maxTilt * -1;
     targetTilt.current.y = clampedX * maxTilt;

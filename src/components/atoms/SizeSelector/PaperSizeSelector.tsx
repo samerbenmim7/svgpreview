@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import "./PaperSizeSelector.css";
+import styles from "./PaperSizeSelector.module.css";
 
 interface PaperSizeSelectorProps {
   value: string;
@@ -26,24 +26,30 @@ const PaperSizeSelector: React.FC<PaperSizeSelectorProps> = ({
   }, []);
 
   return (
-    <div className="paper-selector" ref={ref}>
-      <label className="selector-label">Format size</label>
-      <div className="dropdown-toggle" onClick={() => setOpen(!open)}>
+    <div
+      className={styles.paperSelector}
+      ref={ref}
+      style={{ position: "fixed" }}
+    >
+      <label className={styles.selectorLabel}>Format size</label>
+      <div className={styles.dropdownToggle} onClick={() => setOpen(!open)}>
         {value.replace("Landscape", "L")}
-        <span className="dropdown-arrow">▾</span>
+        <span className={styles.dropdownArrow}>▾</span>
       </div>
       {open && (
-        <div className="dropdown-menu">
+        <div className={styles.dropdownMenu}>
           {options.map((opt) => (
             <div
               key={opt}
-              className={`dropdown-item ${opt === value ? "selected" : ""}`}
+              className={`${styles.dropdownItem} ${
+                opt === value ? styles.selected : ""
+              }`}
               onClick={() => {
                 onChange(opt);
                 setOpen(false);
               }}
             >
-              <div className="paper-icon" />
+              <div className={styles.paperIcon} />
               <span>{opt}</span>
             </div>
           ))}

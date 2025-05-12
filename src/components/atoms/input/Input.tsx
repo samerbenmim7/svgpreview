@@ -1,5 +1,5 @@
 import React from "react";
-import "./RecipientSelector.css";
+import styles from "./RecipientSelector.module.css"; // Assuming you're using CSS Modules
 
 interface RecipientSelectorProps {
   value: number | null;
@@ -14,16 +14,18 @@ const RecipientSelector: React.FC<RecipientSelectorProps> = ({
   const increment = () => onChange(Math.min(7, value + 1));
 
   return (
-    <div className="recipient-wrapper">
-      <label className="recipient-label">Recipient</label>
-      <div className="recipient-control">
-        <span className="recipient-sub">No.</span>
-        <div className="recipient-box">
-          <button onClick={decrement} className="arrow-btn">
+    <div className={styles.recipientWrapper}>
+      <label className={styles.recipientLabel}>Recipient</label>
+      <div className={styles.recipientControl}>
+        <span className={styles.recipientSub}>No.</span>
+        <div className={styles.recipientBox}>
+          <button onClick={decrement} className={styles.arrowBtn}>
             &#8249;
           </button>
-          <span className="recipient-value">{value ? value : ""}</span>
-          <button onClick={increment} className="arrow-btn">
+          <span className={styles.recipientValue}>
+            {value == 0 ? "" : value}
+          </span>
+          <button onClick={increment} className={styles.arrowBtn}>
             &#8250;
           </button>
         </div>

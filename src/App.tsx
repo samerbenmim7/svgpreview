@@ -23,6 +23,7 @@ import {
   BlockConfig,
   Block,
   Snapshot,
+  EditorState,
 } from "./types/types";
 import { useDebounce } from "./hooks/useDebounce";
 import { useCenterScroll } from "./hooks/useCenterScroll";
@@ -40,11 +41,58 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import RecipientSelector from "./components/atoms/input/Input";
 import PaperSizeSelector from "./components/atoms/SizeSelector/PaperSizeSelector";
 
+interface Card {
+  paper: string;
+  svgData: string;
+  positions: Record<number, Position>; // to be renamed blocksPosition
+  backgroundImage: string;
+  parametersUrl: string; // should be renamedcontains the string that serves to regenerate same block
+  blocks: Block[];
+  selectedBlockIndex: number;
+  selectedConfigId: number;
+  align: string;
+  size: string;
+  blockShouldDisplayOutline: boolean;
+  svgGroups;
+  lastUpdatedBlockId;
+  //paperWidth to be verefied
+  //paperHeight to be verified
+  //format to be verified
+  //config to be verifie
+  // is Template to be verified
+}
+
 export default function App() {
   // Refs
   const cardRef = useRef<HTMLDivElement | null>(null);
   const blockNextId = useRef(defaultBlocks.length + 1);
-  const [zoom, setZoom] = useState<number>(39);
+  const [editorState, setEditorState] = useState<EditorState>({
+    paper: Object.keys(PAPER_SIZES_MM)[0],
+    positions: {},
+    svgData: "",
+    backgroundImage: "",
+    parametersUrl: "",
+    blocks: defaultBlocks,
+    selectedBlockIndex: 1,
+    paperWidth: 50,
+    paperHeight: 105,
+    recipientId: 0,
+    selectedConfigId: 25,
+    format: "svg",
+    config: defaultConfig,
+    isTemplate: true,
+    align: "left",
+    size: "medium",
+    blockShouldDisplayOutline: false,
+    svgGroups: new Map(),
+    needsSync: true,
+    history: [],
+    future: [],
+    GroupIdentifierUrlMap: new Map(),
+    lastUpdatedBlockId: null,
+  });
+
+  const [zoom, setZoom] = useState<number>(40);
   const [paper, setPaper] = useState(Object.keys(PAPER_SIZES_MM)[0]);
 
   // State declarations
@@ -55,7 +103,7 @@ export default function App() {
   const [blocks, setBlocks] = useState<Block[]>(defaultBlocks);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [selectedBlockIndex, setSelectedBlockIndex] = useState<number>(1);
-  const [paperWidth, setPaperWidth] = useState<number>(50);
+  const [paperWidth, setPaperWidth] = useState<number>(50); // TO
   const [paperHeight, setPaperHeight] = useState<number>(105);
   const [recipientId, setRecipientId] = useState<number>(0);
   const [selectedConfigId, setSelectedConfigId] = useState<number>(25);
@@ -392,7 +440,7 @@ export default function App() {
       placeholders,
     ]
   );
-
+  console.log("positions", positions);
   // const handleSendRequest = useCallback(async () => {
   //   if (!parametersUrl) return;
   //   try {
@@ -678,7 +726,7 @@ export default function App() {
             width: "90%",
             zIndex: 1,
             right: 0,
-            height: "740px",
+            minHeight: "740px",
             borderRadius: "10px",
             display: "flex",
             marginLeft: "auto",
@@ -698,13 +746,18 @@ export default function App() {
                   marginLeft: "120px",
                   fontFamily: "sans-serif",
                   display: "flex",
+
+                  position: "fixed",
                 }}
               >
                 Post Card
               </h1>
               <PaperSizeSelector
                 value={paper}
-                onChange={(o) => setPaper(o)}
+                onChange={(o) => {
+                  setPaper(o);
+                  setZoom(PAPER_SIZES_MM[o].scale);
+                }}
                 options={Object.keys(PAPER_SIZES_MM)}
               />
             </div>
@@ -720,7 +773,7 @@ export default function App() {
                 style={{
                   width: "100%",
                   display: "flex",
-                  justifyContent: "center",
+                  justifyContent: "end",
                   alignItems: "center",
                   height: "100%",
                   position: "relative",
@@ -728,22 +781,10 @@ export default function App() {
               >
                 <div
                   style={{
-                    width: "20%",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    height: (paperHeight * PX_PER_MM * zoom) / 100,
-                    alignItems: "end",
-                  }}
-                >
-                  <div></div>
-                </div>
-                <div
-                  style={{
                     width: (PX_PER_MM * paperWidth * zoom) / 100,
                     height: "100%",
                     display: "flex",
-                    justifyContent: "center",
+                    justifyContent: "space-between",
                     alignItems: "center",
                     position: "relative",
                     flexDirection: "column",
@@ -871,7 +912,7 @@ export default function App() {
                     style={{
                       width: (PX_PER_MM * paperWidth * zoom) / 100,
                       height: (PX_PER_MM * paperHeight * zoom) / 100,
-                      maxHeight: "685px",
+                      //maxHeight: "685px",
                       display: "flex",
                       justifyContent: "flex-end",
                       alignItems: "center",
@@ -904,6 +945,7 @@ export default function App() {
                       handleBlockChange={handleBlockChange}
                       blocks={blocks}
                       backgroundImage={backgroundImage}
+                      skewAnimateRange={PAPER_SIZES_MM[paper].skew}
                     />
                   </div>
 
@@ -911,7 +953,7 @@ export default function App() {
                     style={{
                       position: "relative",
                       width: "100%",
-                      height: "20px",
+                      height: "60px",
                       marginTop: "15px",
                       display: "flex",
                       justifyContent: "space-between",

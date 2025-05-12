@@ -53,3 +53,29 @@ export type Snapshot = {
   size: string;
   lastUpdatedBlockId: string | null;
 };
+
+interface EditorState {
+  paper: string;
+  positions: Record<number, Position>;
+  svgData: string;
+  backgroundImage: string;
+  parametersUrl: string;
+  blocks: Block[];
+  selectedBlockIndex: number;
+  paperWidth: number;
+  paperHeight: number;
+  recipientId: number;
+  selectedConfigId: number;
+  format: string;
+  config: any; // Consider defining a specific type for config
+  isTemplate: boolean;
+  align: string;
+  size: string;
+  blockShouldDisplayOutline: boolean;
+  svgGroups: Map<number, string>;
+  needsSync: boolean;
+  history: Snapshot[];
+  future: Snapshot[];
+  GroupIdentifierUrlMap: Map<number, string>;
+  lastUpdatedBlockId: string | null;
+}

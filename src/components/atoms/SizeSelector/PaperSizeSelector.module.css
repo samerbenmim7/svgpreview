@@ -1,4 +1,4 @@
-.paper-selector {
+.paperSelector {
   display: flex;
   position: sticky;
   font-family: sans-serif;
@@ -6,18 +6,18 @@
   align-items: end;
   width: 155px;
   justify-content: space-between;
-  margin-top: -15px;
+  margin-top: 120px;
   z-index: 999;
 }
 
-.selector-label {
+.selectorLabel {
   font-weight: bold;
   font-size: 13px;
   margin-bottom: 4px;
   color: #000;
 }
 
-.dropdown-toggle {
+.dropdownToggle {
   padding: 6px 10px;
   font-size: 14px;
   border: 1px solid #aaa;
@@ -30,11 +30,11 @@
   min-width: 60px;
 }
 
-.dropdown-arrow {
+.dropdownArrow {
   margin-left: 8px;
 }
 
-.dropdown-menu {
+.dropdownMenu {
   position: absolute;
   top: 40px;
   left: 85px;
@@ -47,7 +47,7 @@
   min-width: 140px;
 }
 
-.dropdown-item {
+.dropdownItem {
   display: flex;
   align-items: center;
   padding: 8px 12px;
@@ -56,16 +56,16 @@
   transition: background-color 0.2s;
 }
 
-.dropdown-item:hover {
+.dropdownItem:hover {
   background-color: #eee;
 }
 
-.dropdown-item.selected {
+.dropdownItem.selected {
   background-color: #ddd;
   font-weight: bold;
 }
 
-.paper-icon {
+.paperIcon {
   width: 20px;
   height: 28px;
   background-color: #ccc;

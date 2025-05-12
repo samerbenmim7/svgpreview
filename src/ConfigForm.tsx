@@ -165,7 +165,14 @@ const Configurator: React.FC<ConfiguratorProps> = ({
   };
 
   return (
-    <div style={{ display: "flex", marginTop: "20px", zIndex: 0 }}>
+    <div
+      style={{
+        display: "flex",
+        marginTop: "20px",
+        zIndex: 0,
+        position: "fixed",
+      }}
+    >
       <SidebarMenu selected={configViewId} onSelect={setConfigViewId} />
       <CardWrapper>
         {configViewId === "text" ? (
