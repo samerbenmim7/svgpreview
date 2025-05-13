@@ -14,7 +14,7 @@ import {
   getRandom,
 } from "./utils/utils";
 import { post, get } from "./services/api";
-import { defaultConfig, defaultBlocks, mockBlock } from "./defaults";
+import { defaultBlocks, mockBlock } from "./defaults";
 import SvgCard from "./components/svgCard/SvgCard";
 import "./Configurator.css";
 import {
@@ -53,7 +53,7 @@ export default function RecipientsPage() {
   const [paperHeight, setPaperHeight] = useState<number>(105);
   const [selectedConfigId, setSelectedConfigId] = useState<number>(25);
   const [format, setFormat] = useState<string>("svg");
-  const [config, setConfig] = useState<any>(defaultConfig);
+  //const [config, setConfig] = useState<any>(defaultConfig);
   const [isTemplate, setIsTemplate] = useState<boolean>(true);
   const [align, setAlign] = useState<string>("left");
   const [size, setSize] = useState<string>("medium");
@@ -158,8 +158,7 @@ export default function RecipientsPage() {
     setPaperWidth(snap.paperWidth);
     setPaperHeight(snap.paperHeight);
     setSelectedConfigId(snap.selectedConfigId);
-    setFormat(snap.format);
-    setConfig(snap.config);
+
     setGroupIdentifierUrlMap(snap.GroupIdentifierUrlMap);
     setIsTemplate(snap.isTemplate);
     setAlign(snap.align);
@@ -327,10 +326,9 @@ export default function RecipientsPage() {
           blocks: b,
           paperWidth,
           paperHeight,
-          format,
           selectedConfigId,
           placeholders,
-          isTemplate,
+          recipientId: null,
         });
 
         const { text, response } = await post("/preview", bodyData);
@@ -368,7 +366,6 @@ export default function RecipientsPage() {
       paperHeight,
       format,
       selectedConfigId,
-      config,
       svgData,
       isTemplate,
       placeholders,

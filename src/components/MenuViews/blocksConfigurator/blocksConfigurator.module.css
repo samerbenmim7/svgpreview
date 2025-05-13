@@ -37,6 +37,16 @@
   font-size: 15px;
   cursor: pointer;
   background: #e8ea7e;
+
+  /* Reset browser defaults */
+  outline: none;
+}
+
+.select:focus {
+  /* Disable browser focus ring (e.g. blue glow) */
+  outline: none;
+  box-shadow: none;
+  border-color: #333; /* keep consistent if browser changes it on focus */
 }
 
 .smallSelect {

@@ -21,22 +21,6 @@ interface DropdownProps {
   options: string[];
 }
 
-interface BlockConfig {
-  text: string;
-  widthInMillimeters: number;
-  fontSize: number;
-  fontName: string;
-  leftOffsetInMillimeters: number;
-  topOffsetInMillimeters: number;
-  multiline: boolean;
-  lineHeight: number;
-  rotation: number;
-  r: number;
-  g: number;
-  b: number;
-  alignment: string;
-}
-
 interface ConfiguratorProps {
   handleBlockChange: (
     e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement> | null,
@@ -56,7 +40,7 @@ interface ConfiguratorProps {
   setBackgroundImage: (url: string) => void;
   onMouseEnter;
   onMouseLeave;
-  paper;
+  cardFormat;
 }
 
 // --- Constants ---
@@ -131,34 +115,32 @@ const Configurator: React.FC<ConfiguratorProps> = ({
   setBackgroundImage,
   onMouseEnter,
   onMouseLeave,
-  paper,
+  cardFormat,
 }) => {
-  const [colour, setColour] = useState("#304ffe");
-  const [font, setFont] = useState("Stafford");
   const [configViewId, setConfigViewId] = useState("text");
   const [toggle, setToggle] = useState(false);
 
-  const colours = ["#304ffe", "#000000", "#ff1744", "#00bfa5"];
-  const fonts = ["Stafford", "Bradley Hand", "Alex Brush", "Great Vibes"];
-  const papers = Object.keys(PAPER_SIZES_MM);
+  // useEffect(() => {
+  //   handleBlockChange(null, "alignment", align);
+  // }, [align]);
+
+  // useEffect(() => {
+  //   handleBlockChange(null, "size", size);
+  // }, [size]);
+
+  // // useEffect(() => {
+  // //   handleBlockChange(null, "fontName ", font);
+  // // }, [font]);
 
   useEffect(() => {
-    handleBlockChange(null, "alignment", align);
-  }, [align]);
-
-  useEffect(() => {
-    handleBlockChange(null, "size", size);
-  }, [size]);
-
-  useEffect(() => {
-    const paperSize = PAPER_SIZES_MM[paper];
+    const paperSize = PAPER_SIZES_MM[cardFormat];
     if (paperSize) {
       setPaperWidth(paperSize.width);
       setPaperHeight(paperSize.height);
     } else {
-      console.warn(`Unknown paper size: ${paper}`);
+      console.warn(`Unknown cardFormat size: ${cardFormat}`);
     }
-  }, [paper]);
+  }, [cardFormat]);
 
   const handleBlockSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBlockIndex(parseInt(e.target.value, 10));
@@ -189,6 +171,9 @@ const Configurator: React.FC<ConfiguratorProps> = ({
             setSize={setSize}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
+            font={
+              blocks.find((b) => b.id == selectedBlockIndex)?.config.fontName
+            }
           />
         ) : configViewId === "elements" ? (
           <SymbolsConfigurator

@@ -110,7 +110,7 @@ export default function DraggableGroup({
 
   const handleMouseEnter = () => {
     setIsHovered(index);
-    setSelectedBlockIndex(index);
+    if (index != selectedBlockIndex) setSelectedBlockIndex(index);
     setLastHovered(index);
   };
 

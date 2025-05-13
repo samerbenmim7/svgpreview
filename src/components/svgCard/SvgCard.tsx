@@ -12,7 +12,12 @@ import { Block, Position } from "../../types/types";
 import { BlockToolbar } from "../helpers/blockToolBar/BlockToolbar";
 
 interface SvgCardProps {
+  /** artwork for the *front* side */
   svgGroups: Map<number, string>;
+  /** artwork for the *back* side (OPTIONAL).  
+      If omitted, front artwork is reused. */
+  backSvgGroups?: Map<number, string>;
+
   positions: Record<number, Position>;
   setSelectedBlockIndex: (index: number) => void;
   containerRef: RefObject<HTMLDivElement>;
@@ -36,11 +41,12 @@ interface SvgCardProps {
   blocks: Block[];
   backgroundImage: string;
   blockShouldDisplayOutline: boolean;
-  skewAnimateRange;
+  skewAnimateRange: number;
 }
 
 const SvgCard: React.FC<SvgCardProps> = ({
   svgGroups,
+  backSvgGroups,
   positions,
   setSelectedBlockIndex,
   selectedBlockIndex,
@@ -60,18 +66,9 @@ const SvgCard: React.FC<SvgCardProps> = ({
   blockShouldDisplayOutline,
   skewAnimateRange,
 }) => {
+  /** -------------- 3‑D tilt animation ---------------- */
   const currentTilt = useRef({ x: 0, y: 0 });
   const targetTilt = useRef({ x: 0, y: 0 });
-
-  const [isHovered, setIsHovered] = useState<number>(-1);
-  const [lastHovered, setLastHovered] = useState<number>(-1);
-  const [isCurrentlyDragging, setIsCurrentlyDragging] =
-    useState<boolean>(false);
-
-  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
-  });
 
   const maxTilt = 12;
   const perspective = 1500;
@@ -84,7 +81,7 @@ const SvgCard: React.FC<SvgCardProps> = ({
     currentTilt.current.y +=
       (targetTilt.current.y - currentTilt.current.y) * speed;
 
-    if (cardRef?.current) {
+    if (cardRef.current) {
       cardRef.current.style.transform = `
         perspective(${perspective}px)
         rotateX(${currentTilt.current.x}deg)
@@ -92,45 +89,53 @@ const SvgCard: React.FC<SvgCardProps> = ({
         scale(${scale})
       `;
     }
-
     requestAnimationFrame(animateTilt);
   };
 
   useEffect(() => {
-    targetTilt.current.x = 0;
-    targetTilt.current.y = 0;
+    requestAnimationFrame(animateTilt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** reset tilt target when user disables the effect */
+  useEffect(() => {
+    targetTilt.current = { x: 0, y: 0 };
   }, [skewAnimateRange]);
 
   const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
-    if (skewAnimateRange == -1) return;
-    if (!cardRef.current) return;
+    if (skewAnimateRange === -1 || !cardRef.current) return;
 
     const rect = cardRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 
-    const diffX = event.clientX - centerX;
-    const diffY = event.clientY - centerY;
-
-    const normX = diffX / (rect.width / 2);
-    const normY = diffY / (rect.height / 2);
+    const diffX = (event.clientX - centerX) / (rect.width / 2);
+    const diffY = (event.clientY - centerY) / (rect.height / 2);
 
     const clampedX = Math.max(
       -skewAnimateRange,
-      Math.min(skewAnimateRange, normX)
+      Math.min(skewAnimateRange, diffX)
     );
     const clampedY = Math.max(
       -skewAnimateRange,
-      Math.min(skewAnimateRange, normY)
+      Math.min(skewAnimateRange, diffY)
     );
 
-    targetTilt.current.x = clampedY * maxTilt * -1;
-    targetTilt.current.y = clampedX * maxTilt;
+    targetTilt.current = {
+      x: clampedY * maxTilt * -1,
+      y: clampedX * maxTilt,
+    };
   };
 
-  useEffect(() => {
-    requestAnimationFrame(animateTilt);
-  }, []);
+  /** -------------- drag / position helpers -------------- */
+  const [isHovered, setIsHovered] = useState<number>(-1);
+  const [lastHovered, setLastHovered] = useState<number>(-1);
+  const [isCurrentlyDragging, setIsCurrentlyDragging] =
+    useState<boolean>(false);
+  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
 
   const handleDragEnd = (
     _: unknown,
@@ -145,43 +150,41 @@ const SvgCard: React.FC<SvgCardProps> = ({
     const mmX = newPos.x / PX_PER_MM;
     const mmY = newPos.y / PX_PER_MM;
 
-    setPositions((prev) => ({
-      ...prev,
-      [id]: newPos,
-    }));
-
+    setPositions((prev) => ({ ...prev, [id]: newPos }));
     setSync(true);
 
-    setBlocks((prevBlocks) =>
-      prevBlocks.map((block) => {
-        if (block.id !== id) return { ...block, changed: false };
-        return {
-          ...block,
-          changed: true,
-          config: {
-            ...block.config,
-            topOffsetInMillimeters: block.config.topOffsetInMillimeters + mmY,
-            leftOffsetInMillimeters: block.config.leftOffsetInMillimeters + mmX,
-          },
-        };
-      })
+    setBlocks((prev) =>
+      prev.map((block) =>
+        block.id !== id
+          ? { ...block, changed: false }
+          : {
+              ...block,
+              changed: true,
+              config: {
+                ...block.config,
+                topOffsetInMillimeters:
+                  block.config.topOffsetInMillimeters + mmY,
+                leftOffsetInMillimeters:
+                  block.config.leftOffsetInMillimeters + mmX,
+              },
+            }
+      )
     );
   };
 
   const selectedBlock = blocks.find((b) => b.id === selectedBlockIndex);
 
+  /** -------------- RENDER -------------- */
+  const zoomStyle = { transform: `scale(${zoom / 100})` };
+
   return (
     <>
-      {/* Toolbar */}
+      {/* ---------- Block toolbar ---------- */}
       <div
+        className={styles.toolbarWrapper}
         style={{
-          position: "absolute",
           top: (toolbarPos.y / 100) * zoom,
           left: (toolbarPos.x / 100) * zoom,
-          pointerEvents: "auto",
-          width: "100px",
-          height: "100px",
-          zIndex: 999,
         }}
       >
         {selectedBlock && (
@@ -192,92 +195,107 @@ const SvgCard: React.FC<SvgCardProps> = ({
             fontSize={selectedBlock.config.fontSize}
             handleBlockChange={handleBlockChange}
             block={selectedBlock}
-            onFontSizeChange={(size: number) => {
-              handleBlockChange(null, "fontSize", size);
-            }}
+            onFontSizeChange={(size) =>
+              handleBlockChange(null, "fontSize", size)
+            }
           />
         )}
       </div>
 
-      {/* SVG container */}
-      <div
-        style={{
-          transform: `scale(${zoom / 100})`,
-          transformOrigin: "right",
-          transformBox: "fill-box",
-          transition: "transform 0.6s",
-        }}
-      >
+      {/* ---------- Card 3‑D / flip container ---------- */}
+      <div className={styles.zoomWrapper} style={zoomStyle}>
         <div
-          ref={containerRef}
-          style={{
-            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-            transformOrigin: "center",
-            transition: "transform 0.6s",
-          }}
+          ref={cardRef}
+          className={styles.tiltWrapper}
           onMouseMove={handleMouseMove}
         >
           <div
-            ref={cardRef}
-            style={{
-              boxShadow: "0 10px 16px #bbb",
-              border: "1px solid #ddd",
-              borderRadius: "10px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
-              background: "rgba(255, 255, 255, 0.15)",
-              color: "white",
-              position: "relative",
-              willChange: "transform",
-              cursor: "pointer",
-              backgroundSize: "100% 100%",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
-              backgroundImage: `url("${backgroundImage}")`,
-            }}
+            ref={containerRef}
+            className={`${styles.faces} ${isFlipped ? styles.flipped : ""}`}
           >
-            <svg
-              id="svgPrev"
-              xmlns="http://www.w3.org/2000/svg"
-              height={pageHeight * PX_PER_MM}
-              width={pageWidth * PX_PER_MM}
+            {/* ---------- FRONT FACE ---------- */}
+            <div
+              className={!isFlipped ? styles.face : styles.faceBack}
+              style={{
+                backgroundImage: `url("${backgroundImage}")`,
+                backgroundSize: "100% 100%",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
             >
-              <rect
-                x="0"
-                y="0"
-                width="100%"
-                height="100%"
-                fill={backgroundImage ? "transparent" : "white"}
-              />
-              {Array.from(svgGroups)
-                .sort((a, b) => b[1].length - a[1].length)
-                .map(([key, value]) => {
-                  const position = positions[key] || { x: 0, y: 0 };
-                  return (
-                    <DraggableGroup
-                      key={key}
-                      index={key}
-                      svgString={value}
-                      zoom={zoom}
-                      onStop={(e, data) => handleDragEnd(e, data, key)}
-                      pushHistory={pushHistory}
-                      position={position}
-                      setSelectedBlockIndex={setSelectedBlockIndex}
-                      selectedBlockIndex={selectedBlockIndex}
-                      isHovered={isHovered}
-                      setIsHovered={setIsHovered}
-                      setLastHovered={setLastHovered}
-                      setToolbarPos={setToolbarPos}
-                      setIsCurrentlyDragging={setIsCurrentlyDragging}
-                      blockShouldDisplayOutline={
-                        blockShouldDisplayOutline && key == selectedBlockIndex
-                      }
-                    />
-                  );
-                })}
-            </svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                height={pageHeight * PX_PER_MM}
+                width={pageWidth * PX_PER_MM}
+              >
+                <rect
+                  x="0"
+                  y="0"
+                  width="100%"
+                  height="100%"
+                  fill={backgroundImage ? "transparent" : "white"}
+                />
+                {Array.from(svgGroups)
+                  .sort((a, b) => b[1].length - a[1].length)
+                  .map(([key, value]) => {
+                    const position = positions[key] || { x: 0, y: 0 };
+                    return (
+                      <DraggableGroup
+                        key={key}
+                        index={key}
+                        svgString={value}
+                        zoom={zoom}
+                        onStop={(e, data) => handleDragEnd(e, data, key)}
+                        pushHistory={pushHistory}
+                        position={position}
+                        setSelectedBlockIndex={setSelectedBlockIndex}
+                        selectedBlockIndex={selectedBlockIndex}
+                        isHovered={isHovered}
+                        setIsHovered={setIsHovered}
+                        setLastHovered={setLastHovered}
+                        setToolbarPos={setToolbarPos}
+                        setIsCurrentlyDragging={setIsCurrentlyDragging}
+                        blockShouldDisplayOutline={
+                          blockShouldDisplayOutline &&
+                          key === selectedBlockIndex
+                        }
+                      />
+                    );
+                  })}
+              </svg>
+            </div>
+
+            {/* ---------- BACK FACE ---------- */}
+            <div
+              className={` ${!isFlipped ? styles.faceBack : styles.face}`}
+              style={{}}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                height={pageHeight * PX_PER_MM}
+                width={pageWidth * PX_PER_MM}
+              >
+                <rect
+                  x="0"
+                  y="0"
+                  width="100%"
+                  height="100%"
+                  fill={backgroundImage ? "transparent" : "white"}
+                />
+                {Array.from(backSvgGroups ?? svgGroups)
+                  .sort((a, b) => b[1].length - a[1].length)
+                  .map(([key, value]) => {
+                    const position = positions[key] || { x: 0, y: 0 };
+                    return (
+                      <g
+                        key={key}
+                        transform={`translate(${position.x}, ${position.y})`}
+                        dangerouslySetInnerHTML={{ __html: value }}
+                      />
+                    );
+                  })}
+              </svg>
+            </div>
           </div>
         </div>
       </div>

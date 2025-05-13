@@ -45,8 +45,7 @@ export type Snapshot = {
   paperWidth: number;
   paperHeight: number;
   selectedConfigId: number;
-  format: string;
-  config: any;
+  // config: any;
   GroupIdentifierUrlMap: Map<number, string>;
   isTemplate: boolean;
   align: string;
@@ -54,8 +53,7 @@ export type Snapshot = {
   lastUpdatedBlockId: string | null;
 };
 
-interface EditorState {
-  paper: string;
+export interface EditorState {
   positions: Record<number, Position>;
   svgData: string;
   backgroundImage: string;
@@ -66,8 +64,7 @@ interface EditorState {
   paperHeight: number;
   recipientId: number;
   selectedConfigId: number;
-  format: string;
-  config: any; // Consider defining a specific type for config
+  //config: any; // Consider defining a specific type for config
   isTemplate: boolean;
   align: string;
   size: string;

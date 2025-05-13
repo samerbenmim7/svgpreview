@@ -1,4 +1,5 @@
 import { initialRows } from "../Recipients";
+import { EditorState } from "../types/types";
 
 interface ExtractResult {
   before: string;
@@ -37,7 +38,6 @@ interface BuildBodyDataParams {
   blocks: Block[];
   paperWidth: number;
   paperHeight: number;
-  format: string;
   selectedConfigId: number;
   placeholders: Placeholder[];
   recipientId: number | null;
@@ -124,7 +124,6 @@ export function buildBodyData({
   blocks,
   paperWidth,
   paperHeight,
-  format,
   selectedConfigId,
   placeholders,
   recipientId,
@@ -150,7 +149,7 @@ export function buildBodyData({
     config: {
       paperWidthInMillimeters: paperWidth,
       paperHeightInMillimeters: paperHeight,
-      format,
+      format: "svg",
     },
     configId: selectedConfigId,
     placeholdersValues:
@@ -186,4 +185,15 @@ export function deleteGroupFromSvgString(str, id) {
 
 export function getRandom(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+export function createStateSetter<K extends keyof EditorState>(
+  key: K,
+  setState: React.Dispatch<React.SetStateAction<EditorState>>
+) {
+  return (value: EditorState[K] | ((prev: EditorState[K]) => EditorState[K])) =>
+    setState((prev) => ({
+      ...prev,
+      [key]: typeof value === "function" ? (value as any)(prev[key]) : value,
+    }));
 }
