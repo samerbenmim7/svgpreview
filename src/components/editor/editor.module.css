@@ -40,7 +40,21 @@
   display: flex;
   position: fixed;
 }
-
+.titlebtn {
+  margin-top: 120px;
+  margin-left: 120px;
+  font-family: sans-serif;
+  font-size: 14px;
+  display: flex;
+  position: fixed;
+  cursor: pointer;
+  text-decoration: none; /* no underline by default */
+  cursor: pointer;
+  transition: text-decoration 1s ease; /* optional smoothness */
+}
+.titlebtn:hover {
+  text-decoration: underline;
+}
 /* --- right (preview) column --- */
 .previewColumn {
   width: 75%;

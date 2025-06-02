@@ -1,10 +1,10 @@
 // apiService.js
 
-const BASE_URL = 'https://inkloom-test.bi-dev2.de/api';
+const BASE_URL = "https://inkloom-test.bi-dev2.de/api";
 
 const defaultHeaders = {
-  'Content-Type': 'application/json',
-  'X-Api-Key': 'cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=',
+  "Content-Type": "application/json",
+  "X-Api-Key": "cmVhZC1hcGlrZXkteC1pbmtsb29tDQo=",
 };
 
 /**
@@ -12,9 +12,9 @@ const defaultHeaders = {
  * @param {string} endpoint - e.g. '/preview'
  * @param {object} headers - optional extra headers
  */
-export const get = async (endpoint, headers = {}, isText= false) => {
+export const get = async (endpoint: any, headers = {}, isText = false) => {
   const response = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'GET',
+    method: "GET",
     headers: { ...defaultHeaders, ...headers },
   });
 
@@ -29,9 +29,11 @@ export const get = async (endpoint, headers = {}, isText= false) => {
  * @param {object} data - JSON payload
  * @param {object} headers - optional extra headers
  */
-export const post = async (endpoint, data, headers = {}) => {
+export const post = async (endpoint: any, data: any, headers = {}) => {
+  //console.log(data);
+
   const response = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'POST',
+    method: "POST",
     headers: { ...defaultHeaders, ...headers },
     body: JSON.stringify(data),
   });

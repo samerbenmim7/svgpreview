@@ -6,6 +6,7 @@ import React, {
   RefObject,
 } from "react";
 import Draggable, { DraggableEvent, DraggableData } from "react-draggable";
+import { BLOCK_HOVER_OUTLINE_ENABLED } from "../../utils/config";
 
 interface DraggableGroupProps {
   svgString: string;
@@ -23,6 +24,7 @@ interface DraggableGroupProps {
   setIsCurrentlyDragging: (val: boolean) => void;
   setLastHovered: (index: number) => void;
   blockShouldDisplayOutline: boolean;
+  setConfigViewId: (index: string) => void;
 }
 
 export default function DraggableGroup({
@@ -41,6 +43,7 @@ export default function DraggableGroup({
   setIsCurrentlyDragging,
   setLastHovered,
   blockShouldDisplayOutline,
+  setConfigViewId,
 }: DraggableGroupProps) {
   const [isCorrected, setIsCorrected] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -104,13 +107,15 @@ export default function DraggableGroup({
   const handleStart = () => {
     pushHistory();
     setSelectedBlockIndex(index);
+    setConfigViewId("text");
+
     setIsDragging(true);
     setIsCurrentlyDragging(true);
   };
 
   const handleMouseEnter = () => {
     setIsHovered(index);
-    if (index != selectedBlockIndex) setSelectedBlockIndex(index);
+    // if (index != selectedBlockIndex) setSelectedBlockIndex(index);
     setLastHovered(index);
   };
 
@@ -155,7 +160,8 @@ export default function DraggableGroup({
         onTransitionEnd={handleTransitionEnd}
         style={{
           outline:
-            blockShouldDisplayOutline || isHovered === index
+            BLOCK_HOVER_OUTLINE_ENABLED &&
+            (blockShouldDisplayOutline || isHovered === index)
               ? "2px dashed blue"
               : "none",
           transition: isCorrected ? "transform 0.5s ease-in" : "none",

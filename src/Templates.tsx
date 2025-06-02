@@ -8,7 +8,7 @@
 // import ConfigForm from "./ConfigForm";
 // import {
 //   addWhiteBackgroundAndBordersToSVG,
-//   extractGId,
+//   extractGroupId,
 //   buildBodyData,
 //   deleteGroupFromSvgString,
 //   getRandom,
@@ -59,7 +59,7 @@
 //   const [size, setSize] = useState<string>("medium");
 //   const [blockShouldDisplayOutline, setBlockShouldDisplayOutline] =
 //     useState<boolean>(false);
-//   const [svgGroups, setSvgGroups] = useState<Map<number, string>>(new Map());
+//   const [svgGroupsIdentifierContentMap, setSvgGroupsIdentifierContentMap] = useState<Map<number, string>>(new Map());
 //   const [needsSync, setSync] = useState(true);
 //   const [history, setHistory] = useState<Snapshot[]>([]);
 //   const [future, setFuture] = useState<Snapshot[]>([]);
@@ -88,7 +88,7 @@
 //     150,
 //     [needsSync, isTemplate, placeholders]
 //   );
-//   useSvgGroups(svgData, svgGroups, setSvgGroups);
+//   useSvgGroups(svgData, svgGroupsIdentifierContentMap, setSvgGroupsIdentifierContentMap);
 //   useKeyboard(
 //     "Backspace",
 //     () => {
@@ -132,7 +132,7 @@
 //   const getSnapshot = (): Snapshot => ({
 //     positions,
 //     blocks,
-//     svgGroups,
+//     svgGroupsIdentifierContentMap,
 //     svgData,
 //     parametersUrl,
 //     selectedBlockIndex,
@@ -151,7 +151,7 @@
 //   const restoreSnapshot = (snap: Snapshot) => {
 //     setPositions(snap.positions);
 //     setBlocks(snap.blocks);
-//     setSvgGroups(snap.svgGroups);
+//     setSvgGroupsIdentifierContentMap(snap.svgGroupsIdentifierContentMap);
 //     setSvgData(snap.svgData);
 //     setParametersUrl(snap.parametersUrl);
 //     setSelectedBlockIndex(snap.selectedBlockIndex);
@@ -170,7 +170,7 @@
 //     setHistory((prev) => [...prev.slice(-9), getSnapshot()]);
 //     setFuture([]);
 //   };
-//   function getBlockNextId() {
+//   function findNextAvailableBlockId() {
 //     const id = blockNextId.current;
 //     blockNextId.current += 1;
 //     return id;
@@ -193,7 +193,7 @@
 //     newSelectedBlockId = filteredBlocks?.[0]?.id;
 //     mutateSilently(filteredBlocks.map((b) => ({ ...b, changed: true })));
 //     setSvgData(deleteGroupFromSvgString(svgData, id));
-//     setSvgGroups((prev) => {
+//     setSvgGroupsIdentifierContentMap((prev) => {
 //       const newMap = new Map(prev);
 //       newMap.delete(id);
 //       return newMap;
@@ -202,7 +202,7 @@
 //   };
 
 //   const handleAddBlock = (text = "NEW TEXT", fontName = DEFAULT_FONT) => {
-//     const blockId = getBlockNextId();
+//     const blockId = findNextAvailableBlockId();
 //     pushHistory();
 //     const b = blocks.map((b) => ({
 //       ...b,
@@ -306,7 +306,7 @@
 //       });
 //       setLastUpdatedBlockId(null);
 //     }
-//   }, [svgGroups, lastUpdatedBlockId]);
+//   }, [svgGroupsIdentifierContentMap, lastUpdatedBlockId]);
 
 //   useEffect(() => {
 //     if (GroupIdentifierUrlMap.size === 0) return;

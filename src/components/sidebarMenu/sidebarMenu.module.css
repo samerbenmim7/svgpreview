@@ -7,6 +7,8 @@
   padding: 24px;
   width: 300px;
   font-family: sans-serif;
+  transform: translateY(-30%);
+
   box-sizing: border-box;
 }
 

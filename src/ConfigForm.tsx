@@ -12,7 +12,8 @@ import BackgroundView from "./components/MenuViews/BackgroundConfigurator/Backgr
 import Toggle from "./components/atoms/toggle/Toggle";
 import SymbolsConfigurator from "./components/MenuViews/symbolsConfigurator/SymbolsConfigurator";
 import { Block } from "./types/types";
-import { PAPER_SIZES_MM } from "./Utils/const";
+import { PAPER_SIZES_MM } from "./utils/const";
+import SignatureConfigurator from "./components/MenuViews/signatureConfigurator/signatureConfigurator";
 
 // --- Types ---
 interface DropdownProps {
@@ -22,25 +23,29 @@ interface DropdownProps {
 }
 
 interface ConfiguratorProps {
-  handleBlockChange: (
-    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement> | null,
-    key?: string,
-    value?: number | string
-  ) => void;
+  handleBlockChange: (updatedBlock: Block, index: number) => void;
   blocks: Block[];
   selectedBlockIndex: number;
   setSelectedBlockIndex: (index: number) => void;
-  align: string;
-  setAlign: (align: string) => void;
   setPaperWidth: (width: number) => void;
   setPaperHeight: (height: number) => void;
-  size: string;
-  setSize: (size: string) => void;
   handleAddBlock: (character: string, fontName: string) => void;
   setBackgroundImage: (url: string) => void;
-  onMouseEnter;
-  onMouseLeave;
-  cardFormat;
+  configViewId: string;
+  setConfigViewId: (id: string | number) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  cardFormat: string; // or a specific union like 'A4' | 'Letter' | ...
+  setSelectedConfigId: (id: string | number) => void;
+  selectedConfigId: string | number;
+  setSync: (sync: boolean) => void;
+  paperWidth: number;
+  backgroundImageOpacity: number;
+  setBackgroundImageOpacity: (opacity: number) => void;
+  setPlaceholders: (placeholders: string[]) => void;
+  placeholders: string[];
+  setTextColor: (color: number) => void;
+  textColor: number;
 }
 
 // --- Constants ---
@@ -105,32 +110,31 @@ const Configurator: React.FC<ConfiguratorProps> = ({
   blocks,
   selectedBlockIndex,
   setSelectedBlockIndex,
-  align,
-  setAlign,
+  // align,
+  // setAlign,
   setPaperWidth,
   setPaperHeight,
-  size,
-  setSize,
+  // size,
+  // setSize,
   handleAddBlock,
   setBackgroundImage,
   onMouseEnter,
   onMouseLeave,
   cardFormat,
+  setSelectedConfigId,
+  selectedConfigId,
+  setSync,
+  paperWidth,
+  backgroundImageOpacity,
+  setBackgroundImageOpacity,
+  setPlaceholders,
+  placeholders,
+  configViewId,
+  setConfigViewId,
+  textColor,
+  setTextColor,
 }) => {
-  const [configViewId, setConfigViewId] = useState("text");
   const [toggle, setToggle] = useState(false);
-
-  // useEffect(() => {
-  //   handleBlockChange(null, "alignment", align);
-  // }, [align]);
-
-  // useEffect(() => {
-  //   handleBlockChange(null, "size", size);
-  // }, [size]);
-
-  // // useEffect(() => {
-  // //   handleBlockChange(null, "fontName ", font);
-  // // }, [font]);
 
   useEffect(() => {
     const paperSize = PAPER_SIZES_MM[cardFormat];
@@ -153,6 +157,7 @@ const Configurator: React.FC<ConfiguratorProps> = ({
         marginTop: "20px",
         zIndex: 0,
         position: "fixed",
+        transform: "translateY(30%)",
       }}
     >
       <SidebarMenu selected={configViewId} onSelect={setConfigViewId} />
@@ -162,18 +167,26 @@ const Configurator: React.FC<ConfiguratorProps> = ({
             handleBlockChange={handleBlockChange}
             setPaperHeight={setPaperHeight}
             setPaperWidth={setPaperWidth}
-            align={align}
-            setAlign={setAlign}
+            // align={align}
+            // setAlign={setAlign}
             blocks={blocks}
             selectedBlockIndex={selectedBlockIndex}
             setSelectedBlockIndex={setSelectedBlockIndex}
-            size={size}
-            setSize={setSize}
+            // size={size}
+            // setSize={setSize}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
+            setSelectedConfigId={setSelectedConfigId}
+            selectedConfigId={selectedConfigId}
             font={
               blocks.find((b) => b.id == selectedBlockIndex)?.config.fontName
             }
+            paperWidth={paperWidth}
+            setSync={setSync}
+            setPlaceholders={setPlaceholders}
+            placeholders={placeholders}
+            setTextColor={setTextColor}
+            textColor={textColor}
           />
         ) : configViewId === "elements" ? (
           <SymbolsConfigurator
@@ -181,7 +194,13 @@ const Configurator: React.FC<ConfiguratorProps> = ({
             handleAddBlock={handleAddBlock}
           />
         ) : configViewId === "background" ? (
-          <BackgroundView setBackgroundImage={setBackgroundImage} />
+          <BackgroundView
+            setBackgroundImage={setBackgroundImage}
+            backgroundImageOpacity={backgroundImageOpacity}
+            setBackgroundImageOpacity={setBackgroundImageOpacity}
+          />
+        ) : configViewId === "signature" ? (
+          <SignatureConfigurator handleAddBlock={handleAddBlock} />
         ) : (
           <>
             <h2>{configViewId}</h2>

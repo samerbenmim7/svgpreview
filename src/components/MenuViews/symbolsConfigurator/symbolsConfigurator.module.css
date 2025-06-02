@@ -165,7 +165,7 @@ input:focus {
   all: unset;
   cursor: pointer;
   font-size: 28px;
-  margin-top: -13px;
+  margin-top: -20px;
 }
 
 .inputBox {

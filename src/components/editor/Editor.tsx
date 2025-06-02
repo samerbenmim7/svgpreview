@@ -3,39 +3,64 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  HTMLAttributes,
+  SetStateAction,
+  Dispatch,
 } from "react";
 import ConfigForm from "../../ConfigForm";
-import {
-  addWhiteBackgroundAndBordersToSVG,
-  buildBodyData,
-  deleteGroupFromSvgString,
-  getRandom,
-  createStateSetter,
-} from "../../utils/utils";
-import { post, get } from "../../services/api";
-import { defaultBlocks, mockBlock } from "../../defaults";
+import { buildBodyData, normaliseEvent } from "../../utils/misc.ts";
+import { post } from "../../services/inkloomApi.ts";
+import { mockBlock } from "../../defaults/defaults.ts";
 import SvgCard from "../svgCard/SvgCard";
 import {
   Position,
   Placeholder,
-  BlockConfig,
-  Block,
   Snapshot,
+  EditorState,
+  BlockUpdate,
 } from "../../types/types";
 import { useDebounce } from "../../hooks/useDebounce";
-import { useCenterScroll } from "../../hooks/useCenterScroll";
 import { useSvgGroups } from "../../hooks/useSvgGroup";
-import { DEFAULT_FONT, PAPER_SIZES_MM, PX_PER_MM } from "../../Utils/const";
-import { useKeyboard } from "../../hooks/useKeyboard";
+import {
+  DEFAULT_FONT,
+  MAX_NUMBER_OF_BLOCKS_PER_VIEW,
+  MAX_NUMBER_OF_CHARS_PER_BLOCK,
+  PAPER_SIZES_MM,
+  PX_PER_MM,
+} from "../../utils/const";
 import Button from "../atoms/button/Button";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import RecipientSelector from "../atoms/input/Input";
 import PaperSizeSelector from "../atoms/SizeSelector/PaperSizeSelector";
 import styles from "./editor.module.css";
 import { usePrevious } from "../../hooks/usePrevious.ts";
+import useRecipientCount from "../../hooks/useRecipientCount.ts";
+import useRecipient from "../../hooks/useRecipient.ts";
+import ShippingPage from "../../ShippingPage.tsx";
+import { findNextAvailableBlockId, getRandom } from "../../utils/math.ts";
+import {
+  addWhiteBackgroundAndBordersToSVG,
+  deleteGroupFromSvgString,
+} from "../../utils/strings.ts";
+import { useSyncPlaceholderLength } from "../../hooks/useSyncPlaceholderLength.ts";
+import { useViewListener } from "../../hooks/useViewListener.ts";
+import { useEditorSetters } from "../../hooks/useEditorKeysSetters.ts";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.ts";
+import { useHistory } from "../../hooks/useHistory.ts";
 
-export default function Editor({
+interface EditorProps {
+  editorState: EditorState;
+  setEditorState: Dispatch<SetStateAction<EditorState>>;
+  isFlipped: boolean;
+  setIsFlipped: Dispatch<SetStateAction<boolean>>;
+  zoom: number;
+  setZoom: Dispatch<SetStateAction<number>>;
+  cardFormat: string;
+  setCardFormat: Dispatch<SetStateAction<string>>;
+  showEnvelope: boolean;
+  setShowEnvelope: Dispatch<SetStateAction<boolean>>;
+  handleSaveDraft: any;
+}
+const Editor: React.FC<EditorProps> = ({
   editorState,
   setEditorState,
   setIsFlipped,
@@ -44,61 +69,51 @@ export default function Editor({
   setZoom,
   cardFormat,
   setCardFormat,
-}) {
+  setShowEnvelope,
+  showEnvelope,
+  handleSaveDraft,
+}) => {
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const blockNextId = useRef(defaultBlocks.length + 1);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const setPositions = createStateSetter("positions", setEditorState);
-  const setSvgData = createStateSetter("svgData", setEditorState);
-  const setBackgroundImage = createStateSetter(
-    "backgroundImage",
-    setEditorState
-  );
-  const setParametersUrl = createStateSetter("parametersUrl", setEditorState);
-  const setBlocks = createStateSetter("blocks", setEditorState);
-  const setSelectedBlockIndex = createStateSetter(
-    "selectedBlockIndex",
-    setEditorState
-  );
-  const setSelectedConfigId = createStateSetter(
-    "selectedConfigId",
-    setEditorState
-  );
-  const setAlign = createStateSetter("align", setEditorState);
-  const setSize = createStateSetter("size", setEditorState);
-  const setBlockShouldDisplayOutline = createStateSetter(
-    "blockShouldDisplayOutline",
-    setEditorState
-  );
-  const setSvgGroups = createStateSetter("svgGroups", setEditorState);
-  const setLastUpdatedBlockId = createStateSetter(
-    "lastUpdatedBlockId",
-    setEditorState
-  );
-  const setGroupIdentifierUrlMap = createStateSetter(
-    "GroupIdentifierUrlMap",
-    setEditorState
-  );
-  const setHistory = createStateSetter("history", setEditorState);
-  const setFuture = createStateSetter("future", setEditorState);
-
   const {
     positions,
     svgData,
     backgroundImage,
-    parametersUrl,
     blocks,
     selectedBlockIndex,
     selectedConfigId,
-    align,
-    size,
+    // align,
+    // size,
     blockShouldDisplayOutline,
-    svgGroups,
+    svgGroupsIdentifierContentMap,
     lastUpdatedBlockId,
     GroupIdentifierUrlMap,
     history,
     future,
+    backgroundImageOpacity,
+    placeholders,
+    textColor,
   } = editorState;
+
+  const {
+    setPositions,
+    setSvgData,
+    setBackgroundImage,
+    setBlocks,
+    setSelectedBlockIndex,
+    setSelectedConfigId,
+    // setAlign,
+    // setSize,
+    setBlockShouldDisplayOutline,
+    setSvgGroupsIdentifierContentMap,
+    setLastUpdatedBlockId,
+    setGroupIdentifierUrlMap,
+    setHistory,
+    setFuture,
+    setBackgroundImageOpacity,
+    setPlaceholders,
+    setTextColor,
+  } = useEditorSetters(setEditorState);
 
   const [paperWidth, setPaperWidth] = useState<number>(50);
   const [paperHeight, setPaperHeight] = useState<number>(105);
@@ -109,145 +124,143 @@ export default function Editor({
 
   const [firstFetch, setFirstFetch] = useState(true);
 
-  const [placeholders, setPlaceholders] = useState<Placeholder[]>([
-    { name: "COMPANY", value: "WunderPen" },
-    { name: "SENDER", value: "Samer Ben Mim," },
+  const [pplaceholders, setPplaceholders] = useState<Placeholder[]>([
+    { name: "CUSTOM1", value: "CUSTOM1" },
+    { name: "CUSTOM2", value: "CUSTOM2" },
+    { name: "CUSTOM3", value: "CUSTOM3" },
+    { name: "CUSTOM4", value: "CUSTOM4" },
+    { name: "CUSTOM5", value: "CUSTOM5" },
   ]);
 
-  const [myValue, setMyValue] = useState(window.view);
+  const [windowView, setWindowView] = useState<string | undefined>(undefined);
+  const [configViewId, setConfigViewId] = useState("text");
+
+  useEffect(() => {
+    setWindowView(window.view);
+  }, []);
+
   const prevRecipientId = usePrevious<number | undefined>(recipientId);
+  const prevSelectedConfigId = usePrevious<number | undefined>(
+    selectedConfigId
+  );
+
   const recipientIdChanged =
     prevRecipientId !== recipientId && recipientId !== undefined;
 
-  useCenterScroll(containerRef, svgData);
+  const selectedConfigIdChanged =
+    prevSelectedConfigId !== selectedConfigId && selectedConfigId !== undefined;
 
   useDebounce(
     () => {
-      if (needsSync) {
-        if (shuffle) {
-          handleGenerate(true);
-          setShuffle(false);
-        } else if (recipientIdChanged) handleGenerate(true);
-        else handleGenerate(false);
-        setSync(false);
-      }
+      if (!needsSync) return;
+      if (shuffle) {
+        handleGenerate(true, false);
+        setShuffle(false);
+      } else if (recipientIdChanged || selectedConfigIdChanged)
+        handleGenerate(true);
+      else handleGenerate(false, false);
+      setSync(false);
     },
-    150,
-    [needsSync, recipientId, placeholders, paperHeight, paperWidth]
+    200,
+    [
+      needsSync,
+      recipientId,
+      placeholders,
+      paperHeight,
+      paperWidth,
+      selectedConfigId,
+      showEnvelope,
+    ]
   );
 
-  useSvgGroups(svgData, svgGroups, setSvgGroups);
-  useKeyboard(
-    "Backspace",
-    () => {
-      if (selectedBlockIndex) {
-        handleDeleteBlock(selectedBlockIndex);
-      }
-    },
-    { ctrl: true }
-  );
-  useKeyboard(
-    "z",
-    () => {
-      undo();
-    },
-    { ctrl: true }
-  );
-  useKeyboard(
-    "y",
-    () => {
-      redo();
-    },
-    { ctrl: true }
+  useSvgGroups(
+    svgData,
+    setSvgGroupsIdentifierContentMap,
+    setGroupIdentifierUrlMap
   );
 
-  const undo = () => {
-    if (history.length === 0) return;
-    const last = history[history.length - 1];
-    setFuture((f) => [getSnapshot(), ...f]);
-    setHistory((h) => h.slice(0, -1));
-    restoreSnapshot(last);
-  };
-
-  const redo = () => {
-    if (future.length === 0) return;
-    const next = future[0];
-    setHistory((h) => [...h, getSnapshot()]);
-    setFuture((f) => f.slice(1));
-    restoreSnapshot(next);
-  };
+  useSyncPlaceholderLength(placeholders);
+  //console.log(parametersUrl);
 
   const getSnapshot = (): Snapshot => ({
     positions,
     blocks,
-    svgGroups,
+    svgGroupsIdentifierContentMap,
     svgData,
-    parametersUrl,
     selectedBlockIndex,
     paperWidth,
     paperHeight,
     selectedConfigId,
     GroupIdentifierUrlMap,
     isTemplate,
-    align,
-    size,
+    textColor,
     lastUpdatedBlockId,
   });
 
   const restoreSnapshot = (snap: Snapshot) => {
+    // console.log("restore", snap);
     setPositions(snap.positions);
     setBlocks(snap.blocks);
-    setSvgGroups(snap.svgGroups);
+    setSvgGroupsIdentifierContentMap(snap.svgGroupsIdentifierContentMap);
     setSvgData(snap.svgData);
-    setParametersUrl(snap.parametersUrl);
     setSelectedBlockIndex(snap.selectedBlockIndex);
     setPaperWidth(snap.paperWidth);
     setPaperHeight(snap.paperHeight);
     setSelectedConfigId(snap.selectedConfigId);
     setGroupIdentifierUrlMap(snap.GroupIdentifierUrlMap);
     setIsTemplate(snap.isTemplate);
-    setAlign(snap.align);
-    setSize(snap.size);
     setLastUpdatedBlockId(snap.lastUpdatedBlockId);
+    setTextColor(snap.textColor);
   };
-  const pushHistory = () => {
-    setHistory((prev) => [...prev.slice(-9), getSnapshot()]);
-    setFuture([]);
-  };
-  function getBlockNextId() {
-    const id = blockNextId.current;
-    blockNextId.current += 1;
-    return id;
-  }
-  const updateMapValue = (id: string, newValue: string) => {
-    setGroupIdentifierUrlMap((prevMap) => {
-      const newMap = new Map(prevMap);
-      newMap.set(parseInt(id, 10), newValue);
-      return newMap;
-    });
-  };
+  const { pushHistory, undo, redo } = useHistory(
+    getSnapshot,
+    restoreSnapshot,
+    history,
+    setHistory,
+    future,
+    setFuture
+    //textColor
+  );
 
-  function mutateSilently(newBlocks: Block[]) {
-    setBlocks(newBlocks);
-  }
+  useKeyboardShortcuts({
+    onDelete: () => {
+      if (selectedBlockIndex !== undefined) {
+        handleDeleteBlock(selectedBlockIndex);
+      }
+    },
+    onUndo: undo,
+    onRedo: redo,
+  });
 
-  const handleDeleteBlock = (id = selectedBlockIndex) => {
+  const handleDeleteBlock = (id: number = selectedBlockIndex): void => {
     pushHistory();
     let newSelectedBlockId = 0;
     const filteredBlocks = blocks.filter((b) => b.id != selectedBlockIndex);
     newSelectedBlockId = filteredBlocks?.[0]?.id;
-    mutateSilently(filteredBlocks.map((b) => ({ ...b, changed: true })));
+    setBlocks(filteredBlocks.map((b) => ({ ...b, changed: true })));
     setSvgData(deleteGroupFromSvgString(svgData, id));
-    setSvgGroups((prev) => {
-      const newMap = new Map(prev);
+    setSvgGroupsIdentifierContentMap((prev: any) => {
+      const newMap = new Map(prev as Map<number, string>);
+      newMap.delete(id);
+      return newMap;
+    });
+    setGroupIdentifierUrlMap((prev: any) => {
+      const newMap = new Map(prev as Map<number, string>);
       newMap.delete(id);
       return newMap;
     });
     setSelectedBlockIndex(newSelectedBlockId);
   };
 
-  const handleAddBlock = (text = "NEW TEXT", fontName = DEFAULT_FONT) => {
-    const blockId = getBlockNextId();
+  const handleAddBlock = (
+    text = "NEW TEXT",
+    fontName = DEFAULT_FONT,
+    fontSize = 7,
+    path = "",
+    isSymbol = false
+  ) => {
+    if (blocks.length >= MAX_NUMBER_OF_BLOCKS_PER_VIEW) return;
+    const blockId = findNextAvailableBlockId(blocks);
     pushHistory();
     const b = blocks.map((b) => ({
       ...b,
@@ -260,96 +273,69 @@ export default function Editor({
         config: {
           ...mockBlock.config,
           fontName,
+          fontSize,
           text,
-          topOffsetInMillimeters: getRandom(10, paperHeight - 10),
-          leftOffsetInMillimeters: getRandom(10, paperWidth - 10),
+          path,
+          topOffsetInMillimeters: getRandom(20, paperHeight - 20),
+          leftOffsetInMillimeters: getRandom(20, paperWidth - 20),
         },
         id: blockId,
+        isSymbol,
       },
     ]);
     setSync(true);
     setSelectedBlockIndex(blockId);
   };
-  const handleBlockChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null,
-    text?: string,
-    v?: any
-  ) => {
+
+  const handleBlockChange = (update: BlockUpdate) => {
     if (!firstFetch) {
       pushHistory();
     } else {
-      setBlocks(
-        blocks.map((b) => ({
-          ...b,
-          changed: false,
-        }))
-      );
+      setBlocks(blocks.map((b) => ({ ...b, changed: false })));
       setFirstFetch(false);
     }
-    let {
-      name = null,
-      value = null,
-      type = null,
-      // @ts-ignore
-      checked = null,
-    } = e?.target || {};
 
-    if (text) {
-      if (text === "alignment") {
-        name = "alignment";
-        value = align;
-      } else if (text === "fontSize") {
-        type = "number";
-        name = "fontSize";
-        value = v;
-      } else if (text == "rotation") {
-        name = "rotation";
-        value = v;
-      } else if (text == "fontName") {
-        name = "fontName";
-        value = v;
-      }
-    }
+    const { name, value, inputType, checked } = normaliseEvent(update);
+    console.log(name, value, inputType, checked);
     setSync(true);
-    setBlocks((prevBlocks) =>
-      prevBlocks.map((block) => {
+
+    setBlocks((prev: any) =>
+      prev.map((block: any) => {
+        if (name === "b")
+          return {
+            ...block,
+            changed: true,
+            config: { ...block.config, b: value },
+          };
+
         if (block.id !== selectedBlockIndex)
           return { ...block, changed: false };
 
-        if (name === "name") {
-          return {
-            ...block,
-            name: value ?? undefined,
-            changed: true,
-          };
-        }
-
-        const newVal =
+        const parsed =
           name === "alignment"
             ? value
             : name === "multiline"
               ? (value as string).toLowerCase() === "true"
-              : type === "checkbox"
+              : inputType === "checkbox"
                 ? checked
-                : type === "number"
-                  ? parseFloat(
-                      name === "r" || name === "g" || name === "b"
-                        ? Math.max(+!value % 255, 0).toString()
-                        : (value as string)
-                    )
+                : inputType === "number"
+                  ? parseFloat(value)
                   : value;
-
         return {
           ...block,
           changed: true,
-          config: {
-            ...block.config,
-            [name as keyof BlockConfig]: newVal, // safer cast
-          },
+          config: { ...block.config, [name]: parsed },
         };
       })
     );
   };
+
+  const { count, recipientIds, loading, error, refresh } =
+    useRecipientCount(48);
+
+  // useEffect(() => {
+  //   console.log(history);
+  // }, [history]);
 
   useEffect(() => {
     if (lastUpdatedBlockId === "all") {
@@ -362,32 +348,44 @@ export default function Editor({
       });
       setLastUpdatedBlockId(null);
     }
-  }, [svgGroups, lastUpdatedBlockId]);
+  }, [svgGroupsIdentifierContentMap, lastUpdatedBlockId]);
+
+  const { data: recipient, refetch } = useRecipient(
+    recipientIds?.[recipientId] ?? null,
+    48
+  );
 
   useEffect(() => {
-    if (GroupIdentifierUrlMap.size === 0) return;
-    const queryParams = [...GroupIdentifierUrlMap.entries()]
-      .map(([_, value]) => `${value}`)
-      .join("&");
-    setParametersUrl(queryParams);
-  }, [GroupIdentifierUrlMap]);
+    // important to make a request after flipping or changing media
+    if (svgData == "") {
+      setSync(true);
+    }
+  }, [svgData]);
 
   const fetchSVG = useCallback(
-    async (regenrateAll = true) => {
+    async (regenrateAll = true, samePreview = false) => {
       try {
         if (!svgData) regenrateAll = true;
         const b = regenrateAll ? blocks : blocks.filter((b) => b.changed);
-        console.log(b);
         const bodyData = buildBodyData({
           blocks: b,
           paperWidth,
           paperHeight,
           selectedConfigId,
-          placeholders,
+          pplaceholders,
           recipientId,
         });
+        let url = "/preview";
+        if (samePreview) {
+          url =
+            url +
+            "?" +
+            [...GroupIdentifierUrlMap.entries()]
+              .map(([key, value]) => `${value}`)
+              .join("&");
+        }
 
-        const { text, response } = await post("/preview", bodyData);
+        const { text, response } = await post(url, bodyData);
         if (!response.ok) throw new Error();
         setLastUpdatedBlockId("all");
 
@@ -395,21 +393,6 @@ export default function Editor({
 
         const paramUrlCount =
           Number(response.headers.get("X-Parameters-Url")) || 0;
-        if (paramUrlCount !== 1) {
-          const newMap = new Map<number, string>();
-          for (let i = 1; i <= paramUrlCount; ++i) {
-            const value = response.headers.get("X-Parameters-Url" + i);
-            if (value) newMap.set(i, value);
-          }
-          setGroupIdentifierUrlMap(newMap);
-        } else {
-          for (let [header, value] of response.headers.entries()) {
-            if (header.toLowerCase().startsWith("x-parameters-url")) {
-              const id = header.slice("X-Parameters-Url".length);
-              if (id) updateMapValue(id, value);
-            }
-          }
-        }
       } catch (e) {
         console.error(e);
         setSvgData('<svg><text x="10" y="50" fill="red">Error</text></svg>');
@@ -426,30 +409,41 @@ export default function Editor({
       svgData,
       isTemplate,
       recipientId,
-      placeholders,
+      pplaceholders,
     ]
   );
+  useEffect(() => {
+    if (!recipient) return;
 
+    const newPlaceholders: Placeholder[] = [];
+
+    ["custom1", "custom2", "custom3", "custom4", "custom5", "custom6"].forEach(
+      (key) => {
+        const raw = recipient[key];
+        if (raw == null || raw === "") return;
+
+        newPlaceholders.push({
+          name: key.toUpperCase(),
+          value: String(raw),
+        });
+      }
+    );
+
+    setPplaceholders(newPlaceholders);
+  }, [recipient]);
   const handleGenerate = (regenrateAll = true, samePreview = false) => {
-    fetchSVG(regenrateAll);
+    fetchSVG(regenrateAll, samePreview);
   };
   const handleShuffle = () => {
     setShuffle(true);
     setSync(true);
   };
 
-  useEffect(() => {
-    const handleChange = () => {
-      setMyValue(window.view);
-    };
+  useViewListener(setWindowView);
 
-    // Custom event you fire when the value changes
-    window.addEventListener("view", handleChange);
-    return () => window.removeEventListener("view", handleChange);
-  }, []);
-  // if (myValue == "Templates") return <Templates />;
-  // if (myValue == "Recipients") return <RecipientsPage />;
-  if (myValue == "Mailing")
+  // if (windowView == "Templates") return <Templates />;
+  // if (windowView == "Recipients") return <RecipientsPage />;
+  if (windowView == "Mailing")
     return (
       <h1
         style={{
@@ -464,22 +458,9 @@ export default function Editor({
         Mailing Step
       </h1>
     );
-  if (myValue == "Shipping" || myValue == "Shipping (optional)")
-    return (
-      <h1
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100%",
-          height: "800px",
-        }}
-      >
-        Shipping Step
-      </h1>
-    );
-  if (myValue == "Completion")
+  if (windowView == "Shipping" || windowView == "Shipping (optional)")
+    return <ShippingPage />;
+  if (windowView == "Completion")
     return (
       <div>
         <h1
@@ -513,6 +494,7 @@ export default function Editor({
   return (
     <>
       <div
+        id={"editor-wrapper"}
         className={styles.wrapper}
         style={
           {
@@ -526,18 +508,30 @@ export default function Editor({
             handleBlockChange={handleBlockChange}
             setPaperHeight={setPaperHeight}
             setPaperWidth={setPaperWidth}
-            align={align}
-            setAlign={setAlign}
+            paperWidth={paperWidth}
+            //align={align}
+            // setAlign={setAlign}
             blocks={blocks}
             selectedBlockIndex={selectedBlockIndex}
             setSelectedBlockIndex={setSelectedBlockIndex}
-            size={size}
-            setSize={setSize}
+            // size={size}
+            // setSize={setSize}
             handleAddBlock={handleAddBlock}
             setBackgroundImage={setBackgroundImage}
             onMouseEnter={() => setBlockShouldDisplayOutline(true)}
             onMouseLeave={() => setBlockShouldDisplayOutline(false)}
             cardFormat={cardFormat}
+            selectedConfigId={selectedConfigId}
+            setSelectedConfigId={setSelectedConfigId}
+            setSync={setSync}
+            setBackgroundImageOpacity={setBackgroundImageOpacity}
+            backgroundImageOpacity={backgroundImageOpacity}
+            placeholders={placeholders}
+            setPlaceholders={setPlaceholders}
+            setConfigViewId={setConfigViewId}
+            configViewId={configViewId}
+            setTextColor={setTextColor}
+            textColor={textColor}
           />
         </div>
 
@@ -545,7 +539,18 @@ export default function Editor({
           <div className={styles.canvasInner}>
             {/* ───── Left selector column ───── */}
             <div className={styles.selectorColumn}>
-              <h1 className={styles.title}>Post Card</h1>
+              <h1 className={styles.title}>
+                {showEnvelope ? "Envelope" : "Post Card"}
+              </h1>
+              <div
+                className={styles.titlebtn}
+                onClick={() => {
+                  setSync(true);
+                  setShowEnvelope(!showEnvelope);
+                }}
+              >
+                {showEnvelope ? "switch to card" : "switch to envelope"}
+              </div>
               <PaperSizeSelector
                 value={cardFormat}
                 onChange={(o) => {
@@ -579,7 +584,7 @@ export default function Editor({
                     <Button
                       label="Save Draft"
                       icon={<i className="bi bi-floppy" />}
-                      onClick={() => alert("Clicked!")}
+                      onClick={() => handleSaveDraft()}
                       width="160px"
                       height="35px"
                       padding="10px 10px"
@@ -597,7 +602,9 @@ export default function Editor({
                       label="Flip Card"
                       icon={<i className="bi bi-arrow-left-right" />}
                       onClick={() => {
-                        if (firstFetch) setSync(true);
+                        //
+                        //  console.log(editorState);
+                        // if (firstFetch) setSync(true);
                         setIsFlipped(!isFlipped);
                       }}
                       width="120px"
@@ -610,63 +617,123 @@ export default function Editor({
                       fontWeight="600"
                       borderRadius="8px"
                     />
-                    <div className={styles.toolbarButtons}>
-                      <Button
-                        label="Step Back"
-                        icon={<i className="bi bi-arrow-90deg-left" />}
-                        onClick={undo}
-                        width="125px"
-                        height="30px"
-                        padding="10px 10px"
-                        backgroundColor="white"
-                        hoverColor="#ebed8e"
-                        color="black"
-                        fontSize="14px"
-                        fontWeight="600"
-                        borderRadius="8px"
-                      />
-                      <Button
-                        label="Step Forward"
-                        icon={<i className="bi bi-arrow-90deg-right" />}
-                        onClick={redo}
-                        width="140px"
-                        height="30px"
-                        padding="10px 10px"
-                        backgroundColor="white"
-                        hoverColor="#ebed8e"
-                        color="black"
-                        fontSize="14px"
-                        fontWeight="600"
-                        borderRadius="8px"
-                      />
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        width: "100%",
+                      }}
+                    >
+                      <div className={styles.toolbarButtons}>
+                        <Button
+                          label="Step Back"
+                          icon={<i className="bi bi-arrow-90deg-left" />}
+                          onClick={undo}
+                          width="125px"
+                          height="30px"
+                          padding="10px 10px"
+                          backgroundColor="white"
+                          hoverColor="#ebed8e"
+                          color="black"
+                          fontSize="14px"
+                          fontWeight="600"
+                          borderRadius="8px"
+                        />
+                        <Button
+                          label="Step Forward"
+                          icon={<i className="bi bi-arrow-90deg-right" />}
+                          onClick={redo}
+                          width="140px"
+                          height="30px"
+                          padding="10px 10px"
+                          backgroundColor="white"
+                          hoverColor="#ebed8e"
+                          color="black"
+                          fontSize="14px"
+                          fontWeight="600"
+                          borderRadius="8px"
+                        />
 
-                      <Button
-                        label="Shuffle"
-                        icon={<i className="bi bi-shuffle" />}
-                        onClick={handleShuffle}
-                        width="100px"
-                        height="30px"
-                        padding="10px 10px"
-                        backgroundColor="white"
-                        hoverColor="#ebed8e"
-                        color="black"
-                        fontSize="14px"
-                        fontWeight="600"
-                        borderRadius="8px"
-                      />
+                        <Button
+                          label="Shuffle"
+                          icon={<i className="bi bi-shuffle" />}
+                          onClick={handleShuffle}
+                          width="100px"
+                          height="30px"
+                          padding="10px 10px"
+                          backgroundColor="white"
+                          hoverColor="#ebed8e"
+                          color="black"
+                          fontSize="14px"
+                          fontWeight="600"
+                          borderRadius="8px"
+                        />
+                      </div>
+                      <div style={{ display: "flex" }}>
+                        <Button
+                          label="Delete Text"
+                          icon={
+                            <i
+                              style={{ color: "#ff6262" }}
+                              className="bi bi-trash3"
+                            />
+                          }
+                          onClick={() => handleDeleteBlock(selectedBlockIndex)}
+                          width="105px"
+                          height="30px"
+                          padding="5px 5px"
+                          backgroundColor="white"
+                          hoverColor="transparent"
+                          color="#ff6262"
+                          fontSize="12px"
+                          fontWeight="600"
+                          borderRadius="8px"
+                          border="solid 1px #ff6262"
+                          disabled={blocks.length == 0}
+                        />
+                        <Button
+                          label="Add Text"
+                          icon={
+                            <i
+                              style={{ color: "green" }}
+                              className="bi bi-plus-lg"
+                            />
+                          }
+                          onClick={() => handleAddBlock()}
+                          width="90px"
+                          height="30px"
+                          padding="5px 5px"
+                          backgroundColor="white"
+                          hoverColor="transparent"
+                          color="green"
+                          fontSize="12px"
+                          fontWeight="600"
+                          borderRadius="8px"
+                          border="solid 1px green"
+                          disabled={
+                            blocks.length >= MAX_NUMBER_OF_BLOCKS_PER_VIEW
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
 
                   {/* ─── SVG canvas ─── */}
                   <div className={styles.svgArea}>
                     <SvgCard
-                      svgGroups={svgGroups}
+                      svgGroupsIdentifierContentMap={
+                        svgGroupsIdentifierContentMap
+                      }
+                      setConfigViewId={setConfigViewId}
                       setBlocks={setBlocks}
                       setPositions={setPositions}
                       positions={positions}
                       setSelectedBlockIndex={setSelectedBlockIndex}
                       blockShouldDisplayOutline={blockShouldDisplayOutline}
+                      //@ts-ignore
                       containerRef={containerRef}
+                      //@ts-ignore
+
                       cardRef={cardRef}
                       setSync={setSync}
                       zoom={zoom}
@@ -681,12 +748,15 @@ export default function Editor({
                       blocks={blocks}
                       backgroundImage={backgroundImage}
                       skewAnimateRange={PAPER_SIZES_MM[cardFormat].skew}
+                      backgroundImageOpacity={backgroundImageOpacity}
+                      showEnvelope={showEnvelope}
                     />
                   </div>
 
                   {/* ─── bottom status bar ─── */}
                   <div className={styles.statusBar}>
                     <RecipientSelector
+                      count={count}
                       value={recipientId}
                       onChange={(e) => {
                         setSync(true);
@@ -703,4 +773,5 @@ export default function Editor({
       </div>
     </>
   );
-}
+};
+export default Editor;

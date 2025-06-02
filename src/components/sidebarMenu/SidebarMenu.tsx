@@ -15,7 +15,7 @@ interface SidebarMenuProps {
 const menuItems: MenuItem[] = [
   {
     id: "text",
-    label: "Text hinzufügen",
+    label: "Add Text",
     icon: (
       <span className={styles.icon}>
         <i className="bi bi-fonts"></i>
@@ -24,7 +24,7 @@ const menuItems: MenuItem[] = [
   },
   {
     id: "image",
-    label: "Bild hinzufügen",
+    label: "Add Image",
     icon: (
       <span className={styles.icon}>
         <i className="bi bi-card-image"></i>
@@ -33,7 +33,7 @@ const menuItems: MenuItem[] = [
   },
   {
     id: "elements",
-    label: "Elemente einfügen",
+    label: "Add Symbols",
     icon: (
       <span className={styles.icon}>
         <i className="bi bi-emoji-smile"></i>{" "}
@@ -42,7 +42,7 @@ const menuItems: MenuItem[] = [
   },
   {
     id: "background",
-    label: "Hintergrund",
+    label: "Add Background",
     icon: (
       <span className={styles.icon}>
         <i className="bi bi-back"></i>
@@ -50,11 +50,11 @@ const menuItems: MenuItem[] = [
     ),
   },
   {
-    id: "address",
-    label: "Adresse",
+    id: "signature",
+    label: "Add Signature",
     icon: (
       <span className={styles.icon}>
-        <i className="bi bi-file-person"></i>
+        <i className="bi bi-pen"></i>
       </span>
     ),
   },

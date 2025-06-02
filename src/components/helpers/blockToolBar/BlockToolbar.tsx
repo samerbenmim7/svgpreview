@@ -25,7 +25,7 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
   ...rest
 }) => {
   const [angle, setAngle] = useState<number>(block.config.rotation);
-
+  return <></>;
   return (
     <div
       onMouseEnter={rest.onMouseEnter}

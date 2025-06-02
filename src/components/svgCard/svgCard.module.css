@@ -71,3 +71,17 @@
   height: 100px;
   z-index: 999;
 }
+
+.bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, var(--overlay-opacity, 0));
+  z-index: 1;
+  /* filter: blur(var(--bg-blur, 10px)); */
+}
+
+.bg > * {
+  position: relative;
+  z-index: 2;
+}

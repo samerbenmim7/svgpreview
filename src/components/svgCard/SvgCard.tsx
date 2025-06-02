@@ -7,13 +7,13 @@ import React, {
 } from "react";
 import styles from "./svgCard.module.css";
 import DraggableGroup from "../draggbleGroup/DraggableGroup";
-import { PX_PER_MM } from "../../Utils/const";
+import { PX_PER_MM } from "../../utils/const";
 import { Block, Position } from "../../types/types";
 import { BlockToolbar } from "../helpers/blockToolBar/BlockToolbar";
 
 interface SvgCardProps {
   /** artwork for the *front* side */
-  svgGroups: Map<number, string>;
+  svgGroupsIdentifierContentMap: Map<number, string>;
   /** artwork for the *back* side (OPTIONAL).  
       If omitted, front artwork is reused. */
   backSvgGroups?: Map<number, string>;
@@ -33,19 +33,18 @@ interface SvgCardProps {
   undo: () => void;
   redo: () => void;
   selectedBlockIndex: number;
-  handleBlockChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null,
-    key?: string,
-    value?: number
-  ) => void;
+  handleBlockChange: any;
   blocks: Block[];
   backgroundImage: string;
   blockShouldDisplayOutline: boolean;
   skewAnimateRange: number;
+  backgroundImageOpacity: any;
+  showEnvelope: any;
+  setConfigViewId: any;
 }
 
 const SvgCard: React.FC<SvgCardProps> = ({
-  svgGroups,
+  svgGroupsIdentifierContentMap,
   backSvgGroups,
   positions,
   setSelectedBlockIndex,
@@ -65,13 +64,16 @@ const SvgCard: React.FC<SvgCardProps> = ({
   backgroundImage,
   blockShouldDisplayOutline,
   skewAnimateRange,
+  backgroundImageOpacity,
+  showEnvelope,
+  setConfigViewId,
 }) => {
   /** -------------- 3‑D tilt animation ---------------- */
   const currentTilt = useRef({ x: 0, y: 0 });
   const targetTilt = useRef({ x: 0, y: 0 });
 
   const maxTilt = 12;
-  const perspective = 1500;
+  const perspective = 5500;
   const scale = 1.01;
   const speed = 0.03;
 
@@ -177,10 +179,13 @@ const SvgCard: React.FC<SvgCardProps> = ({
   /** -------------- RENDER -------------- */
   const zoomStyle = { transform: `scale(${zoom / 100})` };
 
+  const svgPxWidth = pageWidth * PX_PER_MM;
+  const svgPxHeight = pageHeight * PX_PER_MM;
+  const flapDepth = svgPxHeight * 0.35; // 15 % of the height
   return (
     <>
       {/* ---------- Block toolbar ---------- */}
-      <div
+      {/* <div
         className={styles.toolbarWrapper}
         style={{
           top: (toolbarPos.y / 100) * zoom,
@@ -200,7 +205,7 @@ const SvgCard: React.FC<SvgCardProps> = ({
             }
           />
         )}
-      </div>
+      </div> */}
 
       {/* ---------- Card 3‑D / flip container ---------- */}
       <div className={styles.zoomWrapper} style={zoomStyle}>
@@ -215,13 +220,17 @@ const SvgCard: React.FC<SvgCardProps> = ({
           >
             {/* ---------- FRONT FACE ---------- */}
             <div
-              className={!isFlipped ? styles.face : styles.faceBack}
-              style={{
-                backgroundImage: `url("${backgroundImage}")`,
-                backgroundSize: "100% 100%",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-              }}
+              // className={!isFlipped ? styles.face : styles.faceBack}
+              className={`${styles.bg} ${isFlipped ? styles.faceBack : styles.face}`}
+              style={
+                {
+                  backgroundImage: `url("${backgroundImage}")`,
+                  backgroundSize: "100% 100%",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                  "--overlay-opacity": 1 - backgroundImageOpacity / 100,
+                } as React.CSSProperties
+              }
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -235,7 +244,20 @@ const SvgCard: React.FC<SvgCardProps> = ({
                   height="100%"
                   fill={backgroundImage ? "transparent" : "white"}
                 />
-                {Array.from(svgGroups)
+                {showEnvelope && (
+                  <path
+                    d={`M0 0
+      L${svgPxWidth / 2} ${flapDepth}
+      L${svgPxWidth} 0`}
+                    fill="none"
+                    stroke="#666"
+                    strokeWidth="2"
+                    strokeDasharray="8 8"
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                )}
+                {Array.from(svgGroupsIdentifierContentMap)
                   .sort((a, b) => b[1].length - a[1].length)
                   .map(([key, value]) => {
                     const position = positions[key] || { x: 0, y: 0 };
@@ -259,6 +281,7 @@ const SvgCard: React.FC<SvgCardProps> = ({
                           blockShouldDisplayOutline &&
                           key === selectedBlockIndex
                         }
+                        setConfigViewId={setConfigViewId}
                       />
                     );
                   })}
@@ -282,7 +305,7 @@ const SvgCard: React.FC<SvgCardProps> = ({
                   height="100%"
                   fill={backgroundImage ? "transparent" : "white"}
                 />
-                {Array.from(backSvgGroups ?? svgGroups)
+                {Array.from(backSvgGroups ?? svgGroupsIdentifierContentMap)
                   .sort((a, b) => b[1].length - a[1].length)
                   .map(([key, value]) => {
                     const position = positions[key] || { x: 0, y: 0 };

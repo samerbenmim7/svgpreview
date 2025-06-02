@@ -41,6 +41,7 @@ const ImageSwiper: React.FC<ImageSwiperProps> = ({
         <Swiper
           modules={[Navigation]}
           slidesPerView={4}
+          slidesPerGroup={4}
           spaceBetween={0}
           loop
           onBeforeInit={(swiper) => {

@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { JSX, useState } from "react";
 import styles from "./backgroundConfigurator.module.css";
 import ImageSwiper from "../../helpers/swiper/Swiper";
 
-const backgroundImages = [
+const backgroundImages: string[] = [
   "https://img.freepik.com/premium-vector/elegant-hand-drawn-leaf-background_336924-2203.jpg?semt=ais_hybrid&w=740",
   "https://images.vexels.com/content/69405/preview/blue-sparkle-and-bokeh-lights-background-design-7bd19e.png",
   "https://cdn.pixabay.com/photo/2017/01/29/21/25/background-2019432_1280.png",
@@ -15,16 +15,26 @@ const backgroundImages = [
   "https://img.freepik.com/free-vector/rectangle-gold-frame-with-foliage-pattern-background-vector_53876-109053.jpg",
 ];
 
-export default function BackgroundView({ setBackgroundImage }) {
-  const [opacity, setOpacity] = useState(100);
-  const [value, setValue] = useState(0);
+interface BackgroundViewProps {
+  setBackgroundImage: (url: string) => void;
+  setBackgroundImageOpacity: (value: number) => void;
+  backgroundImageOpacity: number;
+}
 
-  const changeValue = (delta) => {
+export default function BackgroundView({
+  setBackgroundImage,
+  setBackgroundImageOpacity,
+  backgroundImageOpacity,
+}: BackgroundViewProps): JSX.Element {
+  const [value, setValue] = useState<number>(0);
+
+  const changeValue = (delta: number) => {
     setValue((prev) => {
-      let newVal = Math.max(0, Math.min(100, prev + delta)); // keep between 0–100
+      const newVal = Math.max(0, Math.min(100, prev + delta));
       return newVal;
     });
   };
+
   return (
     <div className={styles.container}>
       <button className={styles.bgButton}>Upload Background</button>
@@ -101,18 +111,18 @@ export default function BackgroundView({ setBackgroundImage }) {
         </div>
       </div>
 
-      <div className={styles.label}>Opaceity</div>
+      <div className={styles.label}>Background Opacity</div>
       <div className={styles.sliderRow}>
         <input
           type="range"
           min={0}
           max={100}
-          value={opacity}
-          onChange={(e) => setOpacity(Number(e.target.value))}
+          value={backgroundImageOpacity}
+          onChange={(e) => setBackgroundImageOpacity(Number(e.target.value))}
           style={{ flex: 1 }}
           className={styles.rangeTrack}
         />
-        <div className={styles.percentBox}>{opacity}%</div>
+        <div className={styles.percentBox}>{backgroundImageOpacity}%</div>
       </div>
     </div>
   );

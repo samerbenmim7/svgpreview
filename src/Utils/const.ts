@@ -1,5 +1,11 @@
 export const PX_PER_MM = 11.8110238095;
 export const DEFAULT_FONT = "jessy";
+export const PEN_BLUE_DEGREE = 210;
+export const MAX_HISTORY = 10;
+export const PLACEHOLDER_KEYS = ["CUSTOM1", "CUSTOM2"] as const;
+export const MAX_NUMBER_OF_CHARS_PER_BLOCK = 1000;
+export const MAX_NUMBER_OF_BLOCKS_PER_VIEW = 15;
+export const SIGNATURE_STROKE_COLOR = "black";
 
 export const PAPER_SIZES_MM: Record<
   string,
