@@ -667,6 +667,7 @@ const Editor: React.FC<EditorProps> = ({
                           fontSize="14px"
                           fontWeight="600"
                           borderRadius="8px"
+                          disabled={blocks.length == 0}
                         />
                       </div>
                       <div style={{ display: "flex" }}>
